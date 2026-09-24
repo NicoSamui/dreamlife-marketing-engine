@@ -1,0 +1,298 @@
+/* ============================================================================
+   Dreamlife Pages — shared/pages.css
+   Gemeinsame Design-Schicht für den Hub (index.html) UND beide Module
+   (funnels/index.html, websites/index.html). Wird nach den Modul-eigenen
+   Styles eingebunden → reine Token-Angleichung, keine Layoutänderung an den
+   Modulen (siehe ARCHITEKTUR.md §5).
+
+   Gliederung:
+     1) Fonts (self-hosted, DSGVO-konform, keine Google-Fonts-Imports)
+     2) Tokens (--dl-*) für data-mode="dark" / "normal" — "Platin-Standard"
+     3) Hub-Komponenten (.dlp-*)
+     4) Embedded-Regeln (Modul läuft eingebettet im Hub-iframe)
+   ========================================================================== */
+
+
+/* ----------------------------------------------------------------------
+   1) FONTS — self-hosted unter /fonts/*.woff2, relative Pfade.
+   Kein Google-Fonts-CDN (DSGVO). JetBrains Mono liegt nicht als Datei vor
+   → Fallback auf System-Monospace-Stack (siehe --dl-font-mono unten).
+   ---------------------------------------------------------------------- */
+@font-face{
+  font-family:'Manrope';
+  src:url('/fonts/manrope.woff2') format('woff2');
+  font-weight:200 800;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{
+  font-family:'Space Grotesk';
+  src:url('/fonts/space-grotesk.woff2') format('woff2');
+  font-weight:300 700;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{
+  font-family:'Inter';
+  src:url('/fonts/inter.woff2') format('woff2');
+  font-weight:100 900;
+  font-style:normal;
+  font-display:swap;
+}
+
+
+/* ----------------------------------------------------------------------
+   2) TOKENS — --dl-* für beide Farbmodi.
+   Quelle: neueste Palette ("Platin-Standard", #dl-final, FunnelForge
+   Z. ~4154ff / website-builder Z. ~7595ff). Nach dem Laden dieser Datei
+   zeigen beide Module (und der Hub) exakt dieselben Farben — unabhängig
+   davon, ob ein Modul seinen eigenen #dl-color-Farbwähler zusätzlich
+   verändert hat (dieser überschreibt per Inline-Style ohnehin danach).
+   ---------------------------------------------------------------------- */
+html[data-mode="dark"]{
+  --dl-bg:#03070A; --dl-ink:#EAFEFF; --dl-muted:#79A6AC;
+  --dl-panel:#0B181C; --dl-panel2:#0E2228;
+  --dl-panel-border:rgba(220,230,242,.20);
+  --dl-accent:#DCE6F2; --dl-accent2:#AEB9CC;
+  --dl-accent-grad:linear-gradient(135deg,#FFFFFF,#AEB9CC);
+  --dl-on-accent:#0A0D12;
+  --dl-value:#FFFFFF; --dl-pos:#7CF5C8; --dl-warn:#FBBF24; --dl-danger:#F87171;
+  --dl-bar-track:rgba(220,230,242,.13); --dl-badge-bg:rgba(220,230,242,.14); --dl-badge-fg:#DCE6F2;
+  --dl-glow:rgba(220,230,242,.20); --dl-glow-strong:rgba(220,230,242,.45);
+  --dl-grid-line:rgba(220,230,242,.22);
+}
+html[data-mode="normal"]{
+  --dl-bg:#E9EBEE; --dl-ink:#0E0E11; --dl-muted:#666A73;
+  --dl-panel:rgba(255,255,255,.62); --dl-panel2:rgba(255,255,255,.74);
+  --dl-panel-border:rgba(255,255,255,.8);
+  --dl-accent:#141417; --dl-accent2:#2C2C31;
+  --dl-accent-grad:linear-gradient(135deg,#2C2C31,#0E0E11);
+  --dl-on-accent:#ffffff;
+  --dl-value:#0E0E11; --dl-pos:#2E7D46; --dl-warn:#B4801E; --dl-danger:#B4443A;
+  --dl-bar-track:rgba(20,20,24,.12); --dl-badge-bg:rgba(18,18,22,.9); --dl-badge-fg:#ffffff;
+  --dl-glow:rgba(0,0,0,.06); --dl-glow-strong:rgba(0,0,0,.12);
+  --dl-grid-line:rgba(20,20,24,.12);
+}
+
+/* Font-Tokens (mode-unabhängig): Manrope Body, Space Grotesk Headlines,
+   JetBrains Mono für Zahlen/Code (Fallback-Stack, keine Datei vorhanden). */
+:root{
+  --dl-font-body:'Manrope',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --dl-font-head:'Space Grotesk','Manrope',sans-serif;
+  --dl-font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --radius:14px;
+  --dlp-shadow:0 20px 50px -12px rgba(0,0,0,.35);
+}
+
+/* Basis-Typografie (mode-unabhängig, sanft – überschreibt keine
+   modul-eigenen !important-Regeln, ergänzt sie nur konsistent). */
+html[data-mode] body{font-family:var(--dl-font-body)}
+html[data-mode] h1,html[data-mode] h2,html[data-mode] h3,
+html[data-mode] .dlp-brand,html[data-mode] .dlp-card h3{font-family:var(--dl-font-head)}
+html[data-mode] code,html[data-mode] pre,html[data-mode] kbd,html[data-mode] samp{font-family:var(--dl-font-mono)}
+
+
+/* ----------------------------------------------------------------------
+   3) HUB-KOMPONENTEN (.dlp-*)
+   Werden ausschließlich vom Hub (index.html) verwendet. In den Modulen
+   ungenutzt, daher kollisionsfrei mit deren eigenen Klassen (.ff-*, .rb-*…).
+   ---------------------------------------------------------------------- */
+
+/* Grundgerüst */
+html[data-mode] .dlp-app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* Leiste (Hub-Leiste im Modul-Modus): 52px, sticky, blur */
+.dlp-bar{
+  position:sticky;top:0;z-index:500;
+  height:52px;flex:0 0 52px;
+  display:flex;align-items:center;gap:6px;
+  padding:0 14px;
+  background:var(--dl-panel);
+  border-bottom:1px solid var(--dl-panel-border);
+  backdrop-filter:blur(16px) saturate(160%);
+  -webkit-backdrop-filter:blur(16px) saturate(160%);
+}
+.dlp-brand{
+  display:flex;align-items:center;gap:8px;
+  font-weight:700;font-size:14px;color:var(--dl-ink);
+  margin-right:10px;white-space:nowrap;
+}
+.dlp-brand .dlp-dot{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--dl-accent-grad);flex:0 0 auto;
+}
+.dlp-tabs{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.dlp-tabs::-webkit-scrollbar{display:none}
+
+.dlp-tab{
+  appearance:none;border:1px solid transparent;background:transparent;cursor:pointer;
+  color:var(--dl-muted);font:inherit;font-family:var(--dl-font-body);font-weight:600;font-size:13px;
+  padding:7px 13px;border-radius:10px;white-space:nowrap;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.dlp-tab:hover{color:var(--dl-ink);background:var(--dl-badge-bg)}
+.dlp-tab[aria-current="true"]{
+  color:var(--dl-on-accent);background:var(--dl-accent-grad);
+  box-shadow:0 0 20px -6px var(--dl-glow-strong);
+}
+
+.dlp-bar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex:0 0 auto}
+
+/* kleiner "◂ Hauptmenü"-Link – für Module gedacht (nur bei embedded=1 sichtbar) */
+.dlp-home{
+  display:none;align-items:center;gap:5px;
+  font:inherit;font-family:var(--dl-font-body);font-size:12.5px;font-weight:600;
+  color:var(--dl-muted);text-decoration:none;cursor:pointer;
+  background:none;border:0;padding:4px 2px;
+}
+.dlp-home:hover{color:var(--dl-ink)}
+
+/* Hell/Dunkel-Schalter im Hub (eigenständig, dlk-Widget der Module bleibt aus) */
+.dlp-theme{
+  width:36px;height:36px;border-radius:10px;
+  display:grid;place-items:center;cursor:pointer;font-size:16px;line-height:1;
+  border:1px solid var(--dl-panel-border);background:var(--dl-panel2);color:var(--dl-ink);
+  transition:transform .15s ease;
+}
+.dlp-theme:hover{transform:translateY(-1px)}
+
+/* Content-Bereich unter der Leiste */
+.dlp-view{flex:1 1 auto;min-height:0;position:relative}
+.dlp-view iframe{position:absolute;inset:0;display:block;width:100%;height:100%;border:0;background:var(--dl-bg)}
+
+/* Hauptmenü-Fläche */
+.dlp-home-view{flex:1 1 auto;overflow-y:auto;padding:40px 20px 64px}
+.dlp-wrap{max-width:960px;margin:0 auto}
+.dlp-hello{font-family:var(--dl-font-head);font-weight:700;font-size:clamp(24px,4vw,34px);color:var(--dl-ink);margin:0 0 6px;letter-spacing:-.01em}
+.dlp-sub{color:var(--dl-muted);font-size:15px;margin:0 0 30px}
+
+/* Karten-Grid für HUB_APPS */
+.dlp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-bottom:44px}
+@media(max-width:640px){.dlp-grid{grid-template-columns:1fr}}
+
+.dlp-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:14px;
+  padding:26px 24px;border-radius:var(--radius);
+  background:var(--dl-panel);border:1px solid var(--dl-panel-border);
+  box-shadow:var(--dlp-shadow);
+  text-align:left;cursor:pointer;
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.dlp-card:hover{transform:translateY(-3px);border-color:var(--dl-accent);box-shadow:0 26px 60px -16px var(--dl-glow-strong)}
+.dlp-card .dlp-ic{
+  width:46px;height:46px;border-radius:12px;
+  display:grid;place-items:center;flex:0 0 auto;
+  background:var(--dl-badge-bg);color:var(--dl-accent);
+}
+.dlp-card .dlp-ic svg{width:24px;height:24px}
+.dlp-card h3{font-size:19px;margin:0;color:var(--dl-ink);font-weight:700}
+.dlp-card p{margin:0;color:var(--dl-muted);font-size:14px;line-height:1.5}
+
+/* Buttons */
+.dlp-btn{
+  appearance:none;cursor:pointer;border:0;border-radius:11px;
+  font:inherit;font-family:var(--dl-font-body);font-weight:700;font-size:14px;
+  padding:11px 20px;display:inline-flex;align-items:center;gap:8px;
+  transition:filter .15s ease,transform .15s ease;
+}
+.dlp-btn.dlp-primary{background:var(--dl-accent-grad);color:var(--dl-on-accent)}
+.dlp-btn.dlp-primary:hover{filter:brightness(1.06)}
+.dlp-btn.dlp-ghost{background:var(--dl-badge-bg);color:var(--dl-ink);border:1px solid var(--dl-panel-border)}
+.dlp-btn.dlp-ghost:hover{border-color:var(--dl-accent)}
+.dlp-btn:active{transform:scale(.98)}
+
+/* "Meine veröffentlichten Seiten" */
+.dlp-section h4{font-family:var(--dl-font-head);font-size:16px;color:var(--dl-ink);margin:0 0 12px;font-weight:700}
+.dlp-pages{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.dlp-page-row{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 16px;border-radius:12px;
+  background:var(--dl-panel);border:1px solid var(--dl-panel-border);
+  font-size:13.5px;color:var(--dl-ink);flex-wrap:wrap;
+}
+.dlp-page-row a{color:var(--dl-accent);text-decoration:none;font-weight:600;word-break:break-all}
+.dlp-page-row a:hover{text-decoration:underline}
+.dlp-page-kind{
+  font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+  padding:3px 8px;border-radius:20px;background:var(--dl-badge-bg);color:var(--dl-badge-fg);
+  flex:0 0 auto;
+}
+.dlp-page-meta{margin-left:auto;color:var(--dl-muted);font-size:12.5px;flex:0 0 auto}
+.dlp-empty,.dlp-error{
+  padding:16px 18px;border-radius:12px;border:1px dashed var(--dl-panel-border);
+  color:var(--dl-muted);font-size:13.5px;background:var(--dl-panel2);
+}
+.dlp-help-line{margin-top:22px;font-size:13px;color:var(--dl-muted)}
+.dlp-help-line button{
+  background:none;border:0;color:var(--dl-accent);cursor:pointer;font:inherit;
+  font-weight:600;padding:0;text-decoration:underline;
+}
+
+/* Sperrbildschirm */
+.dlp-lock{
+  flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  padding:40px 20px;text-align:center;
+}
+.dlp-lock-card{
+  max-width:420px;padding:34px 30px;border-radius:20px;
+  background:var(--dl-panel);border:1px solid var(--dl-panel-border);box-shadow:var(--dlp-shadow);
+}
+.dlp-lock-card .dlp-ic{width:52px;height:52px;margin:0 auto 16px;background:var(--dl-badge-bg);color:var(--dl-accent);border-radius:14px;display:grid;place-items:center}
+.dlp-lock-card h2{font-family:var(--dl-font-head);font-size:20px;color:var(--dl-ink);margin:0 0 10px}
+.dlp-lock-card p{color:var(--dl-muted);font-size:14.5px;line-height:1.55;margin:0}
+
+/* Update-Banner */
+.dlp-update{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:9px 16px;font-size:13px;font-weight:600;color:var(--dl-on-accent);
+  background:var(--dl-accent-grad);cursor:pointer;
+}
+.dlp-update button{
+  border:0;background:rgba(255,255,255,.28);color:inherit;font:inherit;font-weight:700;
+  padding:5px 12px;border-radius:8px;cursor:pointer;
+}
+
+/* Intro-Overlay (3-Schritte) */
+.dlp-intro{
+  position:fixed;inset:0;z-index:2147483000;
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.dlp-intro.dlp-open{display:flex}
+.dlp-intro-scrim{position:absolute;inset:0;background:rgba(3,7,10,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+html[data-mode="normal"] .dlp-intro-scrim{background:rgba(20,20,23,.42)}
+.dlp-intro-card{
+  position:relative;max-width:440px;width:100%;border-radius:22px;padding:30px 28px;
+  background:var(--dl-panel);border:1px solid var(--dl-panel-border);color:var(--dl-ink);
+  box-shadow:0 30px 90px -30px rgba(0,0,0,.55);
+  animation:dlp-in .22s ease;
+}
+@keyframes dlp-in{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.dlp-intro-steps{display:flex;gap:6px;margin-bottom:16px}
+.dlp-intro-steps span{height:4px;flex:1 1 0;border-radius:3px;background:var(--dl-bar-track)}
+.dlp-intro-steps span.on{background:var(--dl-accent-grad)}
+.dlp-intro-badge{font-family:var(--dl-font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dl-accent)}
+.dlp-intro-title{font-family:var(--dl-font-head);font-weight:700;font-size:23px;margin:9px 0 8px;letter-spacing:-.01em;line-height:1.2}
+.dlp-intro-text{font-size:14.5px;line-height:1.6;color:var(--dl-muted);margin-bottom:24px}
+.dlp-intro-actions{display:flex;align-items:center;gap:10px}
+.dlp-intro-actions .dlp-btn{flex:1 1 auto;justify-content:center}
+.dlp-intro-back{
+  background:none;border:0;color:var(--dl-muted);font:inherit;font-weight:600;font-size:13px;
+  cursor:pointer;padding:8px;flex:0 0 auto;
+}
+.dlp-intro-back:hover{color:var(--dl-ink)}
+.dlp-intro-back[hidden]{visibility:hidden}
+
+
+/* ----------------------------------------------------------------------
+   4) EMBEDDED-REGELN
+   Gilt für die Modul-Dokumente selbst (funnels/index.html, websites/
+   index.html), wenn sie mit ?embedded=1 im Hub-iframe laufen und daraufhin
+   `data-embedded` an ihrem eigenen <html> setzen. Versteckt das modul-
+   eigene dlk-Kit (Umschalter + Intro), weil der Hub beides übernimmt.
+   ---------------------------------------------------------------------- */
+html[data-embedded] #dlk-bar{display:none!important}
+html[data-embedded] .dlk-intro,
+html[data-embedded] #dlk-intro{display:none!important}
+
+/* "◂ Hauptmenü"-Link der Module: nur sichtbar, wenn eingebettet */
+html[data-embedded] .dlp-home{display:inline-flex}

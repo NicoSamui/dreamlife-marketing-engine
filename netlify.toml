@@ -1,0 +1,47 @@
+# netlify.toml, Dreamlife Marketing Engine (Stand 25.09.2026)
+# Statische App ohne Build-Schritt, alle Server-Logik liegt in netlify/functions/.
+# Reduzierte Fassung von Dreamlife Pages (§4.5 der Spezifikation): kein Seiten-Hosting,
+# keine Tracking-Pixel-CDNs, die App laeuft nur als LearningSuite-Embed per iframe.
+
+[build]
+  publish = "."
+  command = ""
+
+# Der Unterordner _shared/ wird NICHT als eigene Function veroeffentlicht (kein index.js
+# darin), esbuild buendelt ihn per require/import in jede Function, die ihn einbindet.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self'; frame-ancestors 'self' https:"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/app.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/app.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/version.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

@@ -1,0 +1,315 @@
+/* ============================================================================
+   Dreamlife Marketing Engine - app.css
+   Baut auf shared/pages.css (--dl-* Tokens) auf. Keine eigenen Farben,
+   nur Layout und Komponenten fuer diese App.
+   ============================================================================ */
+
+html, body { height: 100%; margin: 0; padding: 0; width: 100%; }
+body { background: var(--dl-bg); color: var(--dl-ink); font-family: var(--dl-font-body); }
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button { font: inherit; }
+a { color: var(--dl-accent); }
+:focus-visible { outline: 2px solid var(--dl-accent); outline-offset: 2px; }
+
+.dlm-app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+
+/* ---------------------------------------------------------------------
+   Kopfleiste
+   --------------------------------------------------------------------- */
+.dlm-crumbs { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; font-size: 13px; }
+.dlm-crumbs::-webkit-scrollbar { display: none; }
+.dlm-crumb { color: var(--dl-muted); text-decoration: none; font-weight: 600; white-space: nowrap; }
+.dlm-crumb:hover { color: var(--dl-ink); }
+.dlm-crumb-current { color: var(--dl-ink); }
+.dlm-crumb-sep { color: var(--dl-muted); opacity: .6; }
+.dlm-hello { color: var(--dl-muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+/* ---------------------------------------------------------------------
+   Layout
+   --------------------------------------------------------------------- */
+.dlm-main { flex: 1 1 auto; padding: 28px 16px 64px; }
+.dlm-wrap { max-width: 1200px; margin: 0 auto; }
+.dlm-title { font-family: var(--dl-font-head); font-size: clamp(20px, 3.4vw, 28px); font-weight: 700; margin: 0 0 4px; letter-spacing: -.01em; }
+.dlm-subtitle { font-family: var(--dl-font-head); font-size: 18px; font-weight: 700; margin: 34px 0 14px; }
+.dlm-muted { color: var(--dl-muted); }
+.dlm-small { font-size: 12.5px; color: var(--dl-muted); }
+.dlm-mono { font-family: var(--dl-font-mono); font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+.dlm-loading, .dlm-empty { padding: 22px; border-radius: 12px; border: 1px dashed var(--dl-panel-border); color: var(--dl-muted); background: var(--dl-panel2); text-align: center; }
+.dlm-empty-block { padding: 34px 24px; border-radius: var(--radius); border: 1px dashed var(--dl-panel-border); background: var(--dl-panel2); text-align: center; max-width: 560px; margin: 24px auto; }
+.dlm-empty-block h3 { font-family: var(--dl-font-head); margin: 0 0 8px; }
+.dlm-empty-txt { color: var(--dl-muted); }
+
+.dlm-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+.dlm-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+
+.footer, .dlm-footer { text-align: center; padding: 18px 16px 26px; color: var(--dl-muted); font-size: 12px; }
+
+.dlp-update { cursor: default; }
+
+/* ---------------------------------------------------------------------
+   Grid / Karten
+   --------------------------------------------------------------------- */
+.dlm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.dlm-project-card, .dlm-campaign-card, .dlm-asset-card { position: relative; }
+.dlm-card-menu { position: absolute; top: 14px; right: 14px; }
+.dlm-icon-btn { width: 30px; height: 30px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--dl-muted); display: grid; place-items: center; cursor: pointer; }
+.dlm-icon-btn:hover { background: var(--dl-badge-bg); color: var(--dl-ink); }
+
+.dlm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.dlm-chip { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; letter-spacing: .01em; padding: 4px 10px; border-radius: 20px; background: var(--dl-badge-bg); color: var(--dl-badge-fg); }
+.dlm-chip-ok { background: rgba(124,245,200,.16); color: var(--dl-pos); }
+.dlm-chip-warn { background: rgba(251,191,36,.16); color: var(--dl-warn); }
+.dlm-chip-danger { background: rgba(248,113,113,.16); color: var(--dl-danger); }
+.dlm-chip-danger-bg { background: rgba(248,113,113,.12); border: 1px solid var(--dl-danger); color: var(--dl-danger); }
+
+.dlm-asset-icons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.dlm-asset-icon { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 7px; background: var(--dl-bar-track); color: var(--dl-muted); font-size: 11px; font-weight: 700; }
+.dlm-asset-icon-on { background: var(--dl-accent-grad); color: var(--dl-on-accent); }
+
+/* ---------------------------------------------------------------------
+   Stepper-Tabs
+   --------------------------------------------------------------------- */
+.dlm-stepper { display: flex; gap: 6px; flex-wrap: wrap; margin: 18px 0 22px; border-bottom: 1px solid var(--dl-panel-border); padding-bottom: 4px; }
+.dlm-tab { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--dl-muted); font-weight: 700; font-size: 13.5px; padding: 10px 14px; border-radius: 10px 10px 0 0; }
+.dlm-tab:hover { color: var(--dl-ink); background: var(--dl-badge-bg); }
+.dlm-tab-active { color: var(--dl-ink); background: var(--dl-panel); box-shadow: inset 0 -3px 0 var(--dl-accent); }
+.dlm-tab-disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------
+   Formulare
+   --------------------------------------------------------------------- */
+.dlm-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; max-width: 1000px; }
+.dlm-field { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--dl-ink); }
+.dlm-field em { color: var(--dl-muted); font-weight: 500; font-style: normal; }
+.dlm-field input[type="text"], .dlm-field textarea, .dlm-field select {
+  font: inherit; font-size: 14px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--dl-panel-border); background: var(--dl-panel2); color: var(--dl-ink); resize: vertical;
+}
+.dlm-field input:focus, .dlm-field textarea:focus, .dlm-field select:focus { border-color: var(--dl-accent); }
+.dlm-help { font-size: 11.5px; font-weight: 500; color: var(--dl-muted); }
+.dlm-save-hint { grid-column: 1 / -1; font-size: 12px; color: var(--dl-muted); min-height: 16px; }
+.dlm-checkline { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 13.5px; padding: 4px 0; }
+fieldset.dlm-field { border: 1px solid var(--dl-panel-border); border-radius: 10px; padding: 12px; }
+fieldset.dlm-field legend { padding: 0 6px; font-weight: 700; font-size: 12.5px; }
+
+/* ---------------------------------------------------------------------
+   Akkordeon
+   --------------------------------------------------------------------- */
+.dlm-accordion { display: flex; flex-direction: column; gap: 10px; }
+.dlm-acc-item { border: 1px solid var(--dl-panel-border); border-radius: 12px; background: var(--dl-panel); overflow: hidden; }
+.dlm-acc-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; background: transparent; border: 0; cursor: pointer; color: var(--dl-ink); font-weight: 700; font-size: 14.5px; text-align: left; }
+.dlm-acc-caret { transition: transform .15s ease; flex: 0 0 auto; }
+.dlm-acc-open .dlm-acc-caret { transform: rotate(180deg); }
+.dlm-acc-body { display: none; padding: 0 16px 16px; }
+.dlm-acc-open .dlm-acc-body { display: block; }
+.dlm-acc-view p, .dlm-acc-view ul { margin: 0 0 10px; line-height: 1.6; font-size: 14px; }
+.dlm-acc-view ul { padding-left: 20px; }
+.dlm-acc-edit textarea { width: 100%; font: inherit; font-size: 14px; padding: 10px; border-radius: 10px; border: 1px solid var(--dl-panel-border); background: var(--dl-panel2); color: var(--dl-ink); }
+.dlm-acc-edit-actions { display: flex; gap: 8px; margin-top: 8px; }
+.dlm-acc-actions { display: flex; gap: 16px; margin-top: 8px; }
+.dlm-punkte { margin: 6px 0; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+
+.dlm-text-btn { background: none; border: 0; color: var(--dl-accent); font: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 2px 0; text-decoration: underline; }
+
+/* ---------------------------------------------------------------------
+   Fortschrittskarte
+   --------------------------------------------------------------------- */
+.dlm-progress-card { max-width: 560px; margin: 24px auto; padding: 26px 24px; border-radius: var(--radius); background: var(--dl-panel); border: 1px solid var(--dl-panel-border); text-align: center; box-shadow: var(--dlp-shadow); }
+.dlm-progress-bar { height: 8px; border-radius: 6px; background: var(--dl-bar-track); overflow: hidden; margin-bottom: 16px; }
+.dlm-progress-fill { height: 100%; width: 8%; border-radius: 6px; background: var(--dl-accent-grad); transition: width .6s ease; animation: dlm-pulse 2.4s ease-in-out infinite; }
+@keyframes dlm-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+.dlm-progress-status { font-weight: 700; margin: 0 0 6px; min-height: 22px; }
+.dlm-progress-chars { color: var(--dl-muted); font-size: 12.5px; margin: 0 0 16px; font-family: var(--dl-font-mono); }
+.dlm-tile-progress .dlm-progress-card { margin: 12px 0 0; padding: 16px; max-width: none; }
+
+.dlm-sticky-counter { position: sticky; top: 60px; z-index: 20; display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: 700; font-size: 13px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); margin-bottom: 14px; }
+.dlm-count-ok { color: var(--dl-pos); border-color: var(--dl-pos); }
+.dlm-count-bad { color: var(--dl-danger); border-color: var(--dl-danger); }
+
+.dlm-filter-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.dlm-filter-chip { cursor: pointer; border: 1px solid var(--dl-panel-border); }
+.dlm-chip-active { background: var(--dl-accent-grad); color: var(--dl-on-accent); }
+
+/* ---------------------------------------------------------------------
+   Winkel-Karten
+   --------------------------------------------------------------------- */
+.dlm-winkel-list { display: flex; flex-direction: column; gap: 12px; }
+.dlm-winkel-card { display: flex; gap: 14px; padding: 16px 18px; border-radius: 12px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); }
+.dlm-winkel-checked { border-color: var(--dl-accent); }
+.dlm-winkel-check { flex: 0 0 auto; padding-top: 3px; }
+.dlm-winkel-check input { width: 18px; height: 18px; }
+.dlm-winkel-main { flex: 1 1 auto; min-width: 0; }
+.dlm-winkel-main h4 { margin: 0 0 4px; font-size: 15.5px; }
+.dlm-winkel-detail { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--dl-panel-border); font-size: 13.5px; }
+.dlm-winkel-detail p { margin: 0 0 6px; }
+
+/* ---------------------------------------------------------------------
+   Asset-Kacheln / Werkstatt
+   --------------------------------------------------------------------- */
+.dlm-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.dlm-tile { padding: 18px; border-radius: 12px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); display: flex; flex-direction: column; gap: 8px; }
+.dlm-tile h4 { margin: 0; font-size: 14.5px; }
+
+.dlm-asset-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+
+/* ---------------------------------------------------------------------
+   Asset-Panel
+   --------------------------------------------------------------------- */
+.dlm-asset-panel { margin-top: 24px; padding: 24px; border-radius: var(--radius); background: var(--dl-panel); border: 1px solid var(--dl-panel-border); }
+.dlm-asset-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.dlm-panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.dlm-asset-body { display: flex; flex-direction: column; gap: 16px; }
+
+.dlm-variant-card, .dlm-post-card { padding: 16px; border-radius: 12px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); }
+.dlm-headline { font-family: var(--dl-font-head); font-weight: 700; font-size: 18px; margin: 4px 0; }
+.dlm-cta-badge { display: inline-block; margin: 8px 0; padding: 6px 14px; border-radius: 20px; background: var(--dl-accent-grad); color: var(--dl-on-accent); font-weight: 700; font-size: 12.5px; }
+.dlm-details { margin-top: 10px; }
+.dlm-details summary { cursor: pointer; font-weight: 700; font-size: 12.5px; color: var(--dl-accent); }
+
+.dlm-img-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+.dlm-img-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.dlm-img-ph { width: 130px; border-radius: 10px; background: var(--dl-bar-track); display: grid; place-items: center; color: var(--dl-muted); font-size: 12px; overflow: hidden; }
+.dlm-img-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dlm-ratio-1x1 { aspect-ratio: 1 / 1; }
+.dlm-ratio-4x5 { aspect-ratio: 4 / 5; }
+.dlm-ratio-9x16 { aspect-ratio: 9 / 16; }
+.dlm-small-btn { padding: 6px 10px; font-size: 11.5px; }
+
+.dlm-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+.dlm-table th, .dlm-table td { border: 1px solid var(--dl-panel-border); padding: 8px 10px; text-align: left; vertical-align: top; }
+.dlm-table th { background: var(--dl-bar-track); }
+
+.dlm-vsl-list { display: flex; flex-direction: column; gap: 12px; }
+.dlm-vsl-row { display: grid; grid-template-columns: 90px 1fr; gap: 14px; padding: 12px; border-radius: 10px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); }
+.dlm-vsl-time { font-weight: 700; font-family: var(--dl-font-mono); font-size: 13px; }
+
+.dlm-book { max-width: 720px; }
+.dlm-book-cover { text-align: center; padding: 30px 16px; border-bottom: 2px solid var(--dl-panel-border); margin-bottom: 16px; }
+.dlm-book-cover h2 { font-family: var(--dl-font-head); font-size: 24px; margin: 0 0 8px; }
+.dlm-chapter { margin: 18px 0; padding-top: 14px; border-top: 1px solid var(--dl-panel-border); }
+.dlm-chapter h4 { font-family: var(--dl-font-head); font-size: 16px; }
+
+.dlm-funnel-flow { display: flex; flex-direction: column; gap: 0; }
+.dlm-funnel-step { display: flex; gap: 14px; padding: 14px 0; position: relative; }
+.dlm-funnel-step:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 46px; bottom: -14px; width: 2px; background: var(--dl-panel-border); }
+.dlm-funnel-num { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; background: var(--dl-accent-grad); color: var(--dl-on-accent); display: grid; place-items: center; font-weight: 700; z-index: 1; }
+
+.dlm-score-ring { width: 84px; height: 84px; border-radius: 50%; flex: 0 0 auto; display: grid; place-items: center; font-weight: 700; font-size: 20px; color: var(--dl-ink);
+  background: conic-gradient(var(--dl-accent) calc(var(--val) * 1%), var(--dl-bar-track) 0); }
+.dlm-score-ring span { background: var(--dl-panel); width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; }
+.dlm-konsistenz-card { display: flex; gap: 20px; align-items: flex-start; padding: 20px; border-radius: 12px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); margin: 12px 0 20px; flex-wrap: wrap; }
+.dlm-konsistenz-body { flex: 1 1 260px; min-width: 0; }
+.dlm-befunde { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
+.dlm-befunde li { padding: 8px 10px; border-radius: 8px; background: var(--dl-panel2); }
+
+/* ---------------------------------------------------------------------
+   Toasts
+   --------------------------------------------------------------------- */
+.dlm-toasts { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.dlm-toast { padding: 11px 18px; border-radius: 10px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); color: var(--dl-ink); font-size: 13.5px; box-shadow: var(--dlp-shadow); opacity: 1; transition: opacity .5s ease; }
+.dlm-toast-out { opacity: 0; }
+
+/* ---------------------------------------------------------------------
+   Dialoge
+   --------------------------------------------------------------------- */
+.dlm-dialog-scrim { position: fixed; inset: 0; z-index: 2900; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(3,7,10,.6); backdrop-filter: blur(4px); }
+html[data-mode="normal"] .dlm-dialog-scrim { background: rgba(20,20,23,.4); }
+.dlm-dialog { width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; border-radius: 18px; padding: 24px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); box-shadow: var(--dlp-shadow); }
+.dlm-dialog h3 { font-family: var(--dl-font-head); margin: 0 0 16px; }
+.dlm-dialog-body { display: flex; flex-direction: column; gap: 14px; }
+.dlm-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* ---------------------------------------------------------------------
+   Responsive
+   --------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  .dlm-main { padding: 20px 12px 56px; }
+  .dlm-head-row { flex-direction: column; }
+  .dlm-hello { display: none; }
+  .dlm-form { grid-template-columns: 1fr; }
+  .dlm-img-ph { width: 96px; }
+  .dlm-vsl-row { grid-template-columns: 1fr; }
+  .dlm-funnel-step:not(:last-child)::after { display: none; }
+}
+@media (min-width: 360px) and (max-width: 400px) {
+  .dlm-title { font-size: 19px; }
+}
+
+/* ---------------------------------------------------------------------
+   Header kompakt auf Mobil (Befund 9)
+   --------------------------------------------------------------------- */
+.dlm-brand-short { display: none; }
+@media (max-width: 640px) {
+  .dlm-brand-full { display: none; }
+  .dlm-brand-short { display: inline; }
+  .dlm-crumb:not(.dlm-crumb-current) { display: none; }
+  .dlm-crumb-sep { display: none; }
+}
+
+/* ---------------------------------------------------------------------
+   Projektordner-Karten (Befund 4)
+   --------------------------------------------------------------------- */
+.dlm-project-title { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.dlm-project-title svg { flex: 0 0 auto; color: var(--dl-accent); }
+.dlm-branch-row { margin: 0 0 6px; }
+.dlm-project-card-new {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 140px; border: 1.5px dashed var(--dl-panel-border); background: transparent;
+  color: var(--dl-muted); font-weight: 700; cursor: pointer;
+}
+.dlm-project-card-new:hover { color: var(--dl-ink); border-color: var(--dl-accent); }
+.dlm-new-plus { font-size: 28px; line-height: 1; color: var(--dl-accent); }
+
+/* ---------------------------------------------------------------------
+   Stepper-Tabs mit Kreis-Nummern (Befund 5)
+   --------------------------------------------------------------------- */
+.dlm-tab { display: inline-flex; align-items: center; gap: 8px; }
+.dlm-tab-num {
+  display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--dl-badge-bg); color: var(--dl-badge-fg); font-size: 11px; font-weight: 700; flex: 0 0 auto;
+}
+.dlm-tab-active .dlm-tab-num { background: var(--dl-accent-grad); color: var(--dl-on-accent); }
+.dlm-tab-num-done { background: var(--dl-accent-grad); color: var(--dl-on-accent); }
+.dlm-tab-disabled { cursor: not-allowed; }
+
+/* ---------------------------------------------------------------------
+   Akkordeon-Nummerierung Zielgruppenanalyse (Befund 2)
+   --------------------------------------------------------------------- */
+.dlm-acc-num {
+  display: inline-block; min-width: 22px; margin-right: 8px; padding: 2px 6px; border-radius: 6px;
+  background: var(--dl-badge-bg); color: var(--dl-muted); font-size: 10.5px; font-weight: 800; letter-spacing: .02em;
+}
+
+/* ---------------------------------------------------------------------
+   Asset-Kacheln mit Icons (Befund 6)
+   --------------------------------------------------------------------- */
+.dlm-tile-head { display: flex; align-items: center; gap: 10px; }
+.dlm-tile-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--dl-badge-bg); color: var(--dl-badge-fg); flex: 0 0 auto; }
+.dlm-tile-count { align-self: flex-start; }
+
+/* ---------------------------------------------------------------------
+   Fortschrittskarte, groesser mit Titel und Hinweis (Befund 7)
+   --------------------------------------------------------------------- */
+.dlm-progress-card { max-width: 620px; padding: 30px 28px; }
+.dlm-progress-title { font-family: var(--dl-font-head); font-size: 19px; margin: 0 0 8px; }
+.dlm-progress-hint { color: var(--dl-muted); font-size: 13px; margin: 0 0 18px; }
+.dlm-progress-indeterminate { position: relative; }
+.dlm-progress-indeterminate::after {
+  content: ""; position: absolute; inset: 0; border-radius: 6px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  width: 40%; animation: dlm-indeterminate 1.6s ease-in-out infinite;
+}
+@keyframes dlm-indeterminate { 0% { left: -40%; } 100% { left: 100%; } }
+
+/* ---------------------------------------------------------------------
+   Nachfass-Liste (Funnel, Befund 3)
+   --------------------------------------------------------------------- */
+.dlm-nachfass-list { display: flex; flex-direction: column; gap: 10px; }
+.dlm-nachfass-item { padding: 12px 14px; border-radius: 10px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); }
+.dlm-subtitle-sm { font-family: var(--dl-font-head); font-size: 15px; margin: 18px 0 8px; }
+
+/* ---------------------------------------------------------------------
+   Leerzustaende (Befund 8)
+   --------------------------------------------------------------------- */
+.dlm-empty-block button { margin-top: 6px; }
