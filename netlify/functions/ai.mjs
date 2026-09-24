@@ -249,10 +249,10 @@ export default async (req) => {
       const beat = setInterval(() => send({ type: 'ping' }), 2000);
 
       try {
+        // Kein temperature-Feld: neuere Modelle (Opus 5.x) lehnen es ab.
         const payload = JSON.stringify({
           model: MODEL,
           max_tokens: promptData.max_tokens,
-          temperature: promptData.temperature,
           stream: true,
           system: promptData.system,
           messages: [{ role: 'user', content: promptData.user }],
