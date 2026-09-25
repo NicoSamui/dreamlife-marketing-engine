@@ -8,6 +8,9 @@ Vorgehen: Lege still eine Hauptperson fest und halte sie in allen Kategorien kon
 Ziel: Die Person wird greifbar. Pflicht: Alter, Geschlecht, Beruf und Rolle, Region, Familienstand, Einkommen und Budget (Schätzung), typischer Werktag mit Uhrzeiten, wer ausdrücklich NICHT zur Zielgruppe gehört. Umfang: mind. 250 Wörter. Fehler: Demografie ohne Alltag; "Männer und Frauen zwischen 25 und 65".
 Beispiel: "6:15 Uhr Wecker, 7:30 Uhr erster Termin beim Kunden in Bielefeld, Mittagessen im Auto, ab 18 Uhr Rechnungen und Angebote am Küchentisch."
 
+
+**Zusatzfeld avatar_person (nur in dieser Kategorie, als eigenes Feld neben titel/inhalt/punkte):** Mache aus der Hauptperson eine greifbare Figur: `name` (typischer Vor- und Nachname für Alter, Region und Milieu, erfunden, kein Prominenter), `alter` (Zahl), `beruf` (kurz), `kurzbeschreibung` (2 Sätze, wer die Person ist und was sie gerade umtreibt), `bild_prompt` (Englisch, 60 bis 100 Wörter: Porträt dieser Person, Alter, Ausdruck, Kleidung, typische Umgebung, Licht, Stimmung; neutraler, ruhiger Hintergrund; keine Marken, kein Text, keine echten Personen). Dieselbe Person zieht sich durch alle Kategorien.
+
 ## 2. wissensstand
 Ziel: Was weiß die Person über ihr Problem und die Lösung? Pflicht: welche Begriffe sie kennt, welche nicht (in Texten erklären), was sie schon probiert hat und warum es scheiterte, wo sie sich informiert, typische Halbwahrheiten. Umfang: mind. 150 Wörter plus 6 bis 10 Punkte. Fehler: Fachsprache des Anbieters für die Sprache der Kunden halten.
 

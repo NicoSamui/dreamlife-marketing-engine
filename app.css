@@ -29,6 +29,34 @@ a { color: var(--dl-accent); }
 @media (max-width: 640px) { .dlm-nav-link { display: none; } }
 
 /* ---------------------------------------------------------------------
+   Hauptnavigation (Befund SPEC §11.6): Avatare / Vorlagen
+   --------------------------------------------------------------------- */
+.dlm-mainnav { display: flex; align-items: stretch; gap: 4px; }
+.dlm-mainnav-link {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px;
+  font-size: 15px; font-weight: 700; color: var(--dl-muted); text-decoration: none; border-radius: 10px;
+}
+.dlm-mainnav-link:hover { color: var(--dl-ink); background: var(--dl-badge-bg); }
+.dlm-mainnav-link.dlm-nav-active { color: var(--dl-ink); background: var(--dl-accent-grad); color: var(--dl-on-accent); }
+@media (max-width: 640px) { .dlm-mainnav { display: none; } }
+
+.dlm-tabbar {
+  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 1500; height: 56px;
+  background: var(--dl-panel); border-top: 1px solid var(--dl-panel-border);
+  align-items: stretch; justify-content: space-around;
+}
+.dlm-tabbar-link {
+  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font: inherit; font-size: 10.5px; font-weight: 700; color: var(--dl-muted); text-decoration: none;
+  background: none; border: 0; cursor: pointer;
+}
+.dlm-tabbar-link.dlm-nav-active { color: var(--dl-accent); }
+@media (max-width: 640px) {
+  .dlm-tabbar { display: flex; }
+  .dlm-main { padding-bottom: 76px; }
+}
+
+/* ---------------------------------------------------------------------
    Layout
    --------------------------------------------------------------------- */
 .dlm-main { flex: 1 1 auto; padding: 28px 16px 64px; }
@@ -74,7 +102,11 @@ a { color: var(--dl-accent); }
    Stepper-Tabs
    --------------------------------------------------------------------- */
 .dlm-stepper { display: flex; gap: 6px; flex-wrap: wrap; margin: 18px 0 22px; border-bottom: 1px solid var(--dl-panel-border); padding-bottom: 4px; }
-.dlm-tab { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--dl-muted); font-weight: 700; font-size: 13.5px; padding: 10px 14px; border-radius: 10px 10px 0 0; }
+.dlm-tab { appearance: none; border: 0; background: transparent; cursor: pointer; color: var(--dl-muted); font-weight: 700; font-size: 13.5px; padding: 10px 14px; min-height: 48px; border-radius: 10px 10px 0 0; }
+@media (max-width: 640px) {
+  .dlm-stepper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .dlm-tab { justify-content: center; }
+}
 .dlm-tab:hover { color: var(--dl-ink); background: var(--dl-badge-bg); }
 .dlm-tab-active { color: var(--dl-ink); background: var(--dl-panel); box-shadow: inset 0 -3px 0 var(--dl-accent); }
 .dlm-tab-disabled { opacity: .45; cursor: not-allowed; }
@@ -368,3 +400,74 @@ html[data-mode="normal"] .dlm-dialog-scrim { background: rgba(20,20,23,.4); }
 .dlm-zone-bar, .dlm-zone-bar-fill { display: block; }
 input.dlm-title#dlm-template-name { font-family: var(--dl-font-head); font-size: 26px; font-weight: 600; color: var(--dl-ink); background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 4px 8px; margin-left: -8px; width: min(100%, 640px); }
 input.dlm-title#dlm-template-name:hover, input.dlm-title#dlm-template-name:focus { border-color: var(--dl-panel-border); outline: none; background: var(--dl-panel); }
+
+/* ---------------------------------------------------------------------
+   Version 1.2: Avatar-Bild/Initialen, Avatar-Karten (SPEC §11.1/§11.3)
+   --------------------------------------------------------------------- */
+.dlm-avatar-pic { border-radius: 50%; object-fit: cover; display: inline-flex; flex: 0 0 auto; }
+.dlm-avatar-initials { background: var(--dl-accent-grad); color: var(--dl-on-accent); align-items: center; justify-content: center; font-weight: 800; font-family: var(--dl-font-head); }
+.dlm-avatar-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.dlm-avatar-card-head h3 { margin: 0; }
+.dlm-avatar-card-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.dlm-avatar-headline { display: flex; align-items: center; gap: 12px; }
+.dlm-avatar-headline h1 { margin: 0; }
+.dlp-btn[disabled] { opacity: .45; cursor: not-allowed; pointer-events: none; }
+
+.dlm-avatar-bigcard { padding: 22px; border-radius: var(--radius); background: var(--dl-panel); border: 1px solid var(--dl-panel-border); margin-bottom: 22px; }
+.dlm-avatar-bigcard-head { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+.dlm-avatar-kurz { margin: 6px 0 14px; }
+.dlm-avatar-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-top: 8px; }
+.dlm-avatar-slot { border-radius: 12px; border: 1px solid var(--dl-panel-border); background: var(--dl-panel2); overflow: hidden; }
+.dlm-avatar-slot-chosen { border-color: var(--dl-accent); box-shadow: 0 0 0 1px var(--dl-accent); }
+.dlm-avatar-slot-img { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; aspect-ratio: 1 / 1; }
+.dlm-avatar-slot-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dlm-avatar-slot-ph { aspect-ratio: 1 / 1; display: grid; place-items: center; color: var(--dl-muted); font-size: 12.5px; background: var(--dl-bar-track); }
+.dlm-avatar-slot-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; }
+
+/* ---------------------------------------------------------------------
+   Zielgruppe: Sprungleiste + Bereichs-Ueberschriften (SPEC §11.6)
+   --------------------------------------------------------------------- */
+.dlm-jumpbar { position: sticky; top: 0; z-index: 15; display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 0; margin-bottom: 10px; background: var(--dl-bg); }
+.dlm-jump-chip { text-decoration: none; cursor: pointer; border: 1px solid var(--dl-panel-border); }
+.dlm-area-heading { scroll-margin-top: 60px; }
+
+/* ---------------------------------------------------------------------
+   Winkel gruppiert nach Awareness-Stufe (SPEC §11.5)
+   --------------------------------------------------------------------- */
+.dlm-awareness-group { margin: 26px 0; }
+.dlm-awareness-heading { font-family: var(--dl-font-head); font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+.dlm-awareness-info { margin: 0 0 14px; font-size: 13.5px; }
+
+/* ---------------------------------------------------------------------
+   Interview-Onboarding (SPEC §11.4)
+   --------------------------------------------------------------------- */
+.dlm-interview { max-width: 640px; margin: 20px auto; }
+.dlm-interview-progress-label { color: var(--dl-muted); font-size: 12.5px; font-weight: 700; margin: 0 0 8px; }
+.dlm-interview-frage { font-family: var(--dl-font-head); font-size: clamp(22px, 3.6vw, 30px); margin: 16px 0 18px; }
+.dlm-interview textarea { width: 100%; font: inherit; font-size: 15px; padding: 14px; border-radius: 12px; border: 1px solid var(--dl-panel-border); background: var(--dl-panel2); color: var(--dl-ink); resize: vertical; }
+.dlm-interview-chips { margin: 8px 0 4px; }
+.dlm-interview-chips .dlm-chip { font-size: 13px; padding: 8px 16px; cursor: pointer; }
+.dlm-interview-mic { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.dlm-mic-recording { color: var(--dl-danger); border-color: var(--dl-danger); }
+.dlm-interview-actions { display: flex; align-items: center; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+.dlm-interview-summary { max-width: 1000px; margin: 0 auto; }
+.dlm-skip-chip { cursor: pointer; border: 0; }
+.dlp-lg { min-height: 52px; padding: 0 28px; font-size: 15px; }
+
+/* ---------------------------------------------------------------------
+   Freebie-Designer (SPEC §11.7)
+   --------------------------------------------------------------------- */
+.dlm-freebie { display: flex; flex-direction: column; gap: 14px; }
+.dlm-freebie-toolbar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 16px; border-radius: 12px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); }
+.dlm-freebie-themes { display: flex; gap: 8px; }
+.dlm-freebie-theme-tile { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--dl-panel-border); background: var(--dl-panel); color: var(--dl-ink); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.dlm-freebie-theme-active { border-color: var(--dl-accent); box-shadow: 0 0 0 1px var(--dl-accent); }
+.dlm-freebie-swatch { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+.dlm-freebie-akzent-field { display: flex; align-items: center; gap: 8px; }
+.dlm-freebie-akzent-field input[type="color"] { width: 34px; height: 30px; padding: 0; border: 1px solid var(--dl-panel-border); border-radius: 8px; background: none; cursor: pointer; }
+.dlm-freebie-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.dlm-freebie-frame { width: 100%; height: 70vh; border: 1px solid var(--dl-panel-border); border-radius: 12px; background: #fff; }
+@media (max-width: 700px) {
+  .dlm-freebie-toolbar { flex-direction: column; align-items: stretch; }
+  .dlm-freebie-actions { margin-left: 0; }
+}

@@ -13,6 +13,11 @@
 //
 // Aufruf: POST /.netlify/functions/image  {uid, asset_id, variante, format, stil?}
 // variante = Index in content.varianten (0-basiert), format = "1:1" | "4:5" | "9:16".
+//
+// Task "avatar" (SPEC §11.3): POST /.netlify/functions/image {uid, task:'avatar', project_id, stil}
+// erzeugt EIN Portraet des Avatars (Zielperson) aus avatar.bild_prompt der Zielgruppenanalyse,
+// stil in foto|illustration|karikatur, Groesse immer 1024x1024. Ohne "task" oder mit
+// task:"creative" laeuft der bisherige Ablauf (Bild-Creative-Variante/Format) unveraendert weiter.
 
 import { randomUUID } from 'node:crypto';
 import aiGuard from './_shared/ai-guard.js';
@@ -33,6 +38,15 @@ const CORS = {
 const SIZE_BY_FORMAT = { '1:1': '1024x1024', '4:5': '1024x1280', '9:16': '1024x1824' };
 const FALLBACK_SIZE_BY_FORMAT = { '1:1': '1024x1024', '4:5': '1024x1536', '9:16': '1024x1536' };
 
+// Stil-Anweisungen fuer Avatar-Portraets (SPEC §11.3). Immer ein einzelnes Portraet ohne Text.
+const AVATAR_STIL_ANWEISUNG = {
+  foto: 'photorealistic portrait, natural light, 85mm lens, shallow depth of field, calm neutral background, genuine expression',
+  illustration: 'modern flat vector illustration portrait, soft colors, friendly, clean shapes, minimal background',
+  karikatur: 'good-natured caricature portrait, exaggerated but likeable features, playful, warm colors, no mockery, clean background',
+};
+const AVATAR_SUFFIX = 'no text, no logos, no watermark, single person, head and shoulders';
+const AVATAR_STILE = Object.keys(AVATAR_STIL_ANWEISUNG);
+
 function cleanId(v) {
   v = (v == null ? '' : '' + v).trim();
   if (!v || v === 'null' || v === 'undefined') return '';
@@ -47,6 +61,17 @@ function randomPath() {
   const d = new Date();
   const ym = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
   return 'v1/' + ym + '/' + randomUUID() + '.jpg';
+}
+
+function avatarPath() {
+  const d = new Date();
+  const ym = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+  return 'avatar/' + ym + '/' + randomUUID() + '.jpg';
+}
+
+function buildAvatarPrompt(bildPrompt, stil) {
+  let prompt = bildPrompt + '. ' + AVATAR_STIL_ANWEISUNG[stil] + '. ' + AVATAR_SUFFIX + '.';
+  return prompt.length > 4000 ? prompt.slice(0, 4000) : prompt;
 }
 
 function buildPrompt(bildPrompt, bildText, stil) {
@@ -126,6 +151,95 @@ async function generateImage(key, prompt, size, fallbackSize) {
   return { ok: false, message: lastMsg };
 }
 
+// Task "avatar" (SPEC §11.3): erzeugt genau ein Portraet aus avatar.bild_prompt, Groesse
+// immer 1024x1024. Speichert in me_projects.avatar.bilder (Eintrag fuer diesen Stil ersetzen,
+// sonst anhaengen), gewaehlt wird nur gesetzt, wenn noch keiner gewaehlt war.
+async function handleAvatar(uid, body, key) {
+  const project_id = cleanId(body.project_id);
+  const stil = AVATAR_STILE.includes(body.stil) ? body.stil : null;
+
+  if (!project_id) return jsonResp({ error: 'Kein Projekt angegeben.' }, 400);
+  if (!stil) return jsonResp({ error: 'Ungültiger Stil. Erlaubt sind foto, illustration oder karikatur.' }, 400);
+
+  let project;
+  try {
+    project = await supa.getOne('me_projects', { id: 'eq.' + project_id });
+  } catch (e) {
+    return jsonResp({ error: 'Projekt konnte nicht geladen werden.' }, 502);
+  }
+  if (!project || project.uid !== uid) return jsonResp({ error: 'Kein Zugriff auf dieses Projekt.' }, 403);
+
+  const avatar = (project.avatar && typeof project.avatar === 'object') ? project.avatar : {};
+  const bildPromptRoh = String(avatar.bild_prompt || '').trim();
+  if (!bildPromptRoh) return jsonResp({ error: 'Bitte zuerst die Zielgruppenanalyse erstellen.' }, 400);
+
+  const prompt = buildAvatarPrompt(bildPromptRoh, stil);
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (obj) => {
+        try { controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n')); } catch (e) {}
+      };
+      send({ type: 'start' });
+      const beat = setInterval(() => send({ type: 'ping' }), 2000);
+
+      try {
+        const result = await generateImage(key, prompt, '1024x1024', '1024x1024');
+        if (!result.ok) {
+          clearInterval(beat);
+          send({ type: 'error', message: result.message || 'Bild konnte nicht erzeugt werden.' });
+          try { controller.close(); } catch (e) {}
+          return;
+        }
+
+        let url;
+        try {
+          url = await supa.uploadImage(BUCKET, avatarPath(), Buffer.from(result.b64, 'base64'), 'image/jpeg');
+        } catch (e) {
+          clearInterval(beat);
+          send({ type: 'error', message: 'Das Bild konnte nicht gespeichert werden.' });
+          try { controller.close(); } catch (e2) {}
+          return;
+        }
+
+        // Zeile frisch laden (Bilder anderer Stile koennen inzwischen geschrieben haben),
+        // avatar.bilder mergen statt ueberschreiben.
+        let fresh = null;
+        try { fresh = await supa.getOne('me_projects', { id: 'eq.' + project_id }); } catch (e) { /* nutze alten Stand */ }
+        const baseProject = fresh || project;
+        const baseAvatar = Object.assign({}, (baseProject.avatar && typeof baseProject.avatar === 'object') ? baseProject.avatar : {});
+        const bilder = Array.isArray(baseAvatar.bilder) ? baseAvatar.bilder.slice() : [];
+        const idx = bilder.findIndex((b) => b && b.stil === stil);
+        if (idx >= 0) bilder[idx] = { stil, url }; else bilder.push({ stil, url });
+        baseAvatar.bilder = bilder;
+        if (!baseAvatar.gewaehlt) baseAvatar.gewaehlt = stil;
+
+        try {
+          await supa.patch('me_projects', { id: 'eq.' + project_id }, { avatar: baseAvatar, updated_at: new Date().toISOString() });
+        } catch (e) {
+          console.error('image.mjs: Speichern des Avatar-Bilds fehlgeschlagen', e && e.message);
+          // Das Bild liegt bereits im Bucket, die URL wird trotzdem an den Browser geliefert.
+        }
+
+        clearInterval(beat);
+        send({ type: 'done', url, stil });
+      } catch (err) {
+        clearInterval(beat);
+        send({ type: 'error', message: 'Unerwarteter Fehler beim Erzeugen des Bildes.' });
+      } finally {
+        clearInterval(beat);
+        try { controller.close(); } catch (e) {}
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: { ...CORS, 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
+  });
+}
+
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response('', { status: 204, headers: CORS });
   if (req.method !== 'POST') return jsonResp({ error: 'Method not allowed' }, 405);
@@ -138,25 +252,33 @@ export default async (req) => {
   try { body = await req.json(); } catch (e) {}
 
   const uid = cleanId(body.uid);
-  const asset_id = cleanId(body.asset_id);
-  const variante = Number.isInteger(body.variante) ? body.variante : parseInt(body.variante, 10);
-  const format = ['1:1', '4:5', '9:16'].includes(body.format) ? body.format : null;
-  const stil = body.stil ? String(body.stil).trim().slice(0, 300) : '';
+  const task = body.task === 'avatar' ? 'avatar' : 'creative';
 
   if (!uid) return jsonResp({ error: 'Kein Nutzer erkannt. Bitte über Learning Suite öffnen.' }, 401);
-  if (!asset_id) return jsonResp({ error: 'Kein Asset angegeben.' }, 400);
-  if (!Number.isInteger(variante) || variante < 0) return jsonResp({ error: 'Ungültige Variante.' }, 400);
-  if (!format) return jsonResp({ error: 'Ungültiges Format. Erlaubt sind 1:1, 4:5 oder 9:16.' }, 400);
 
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) return jsonResp({ error: 'KI-Bilder sind noch nicht konfiguriert (OPENAI_API_KEY fehlt im Backend).' }, 503);
+  const keyEarly = process.env.OPENAI_API_KEY;
+  if (!keyEarly) return jsonResp({ error: 'KI-Bilder sind noch nicht konfiguriert (OPENAI_API_KEY fehlt im Backend).' }, 503);
 
-  const g = await aiGuard.guard({
+  const gEarly = await aiGuard.guard({
     app: 'marketing-engine', kind: 'image', uid, headers: req.headers,
     defaults: { ipPerHour: 20, uidPerDay: 30, globalPerDay: 300 },
     messages: { uid: 'Dein Tageslimit für KI-Bilder ist erreicht. Morgen geht es weiter.' },
   });
-  if (!g.ok) return jsonResp({ error: g.error }, g.status);
+  if (!gEarly.ok) return jsonResp({ error: gEarly.error }, gEarly.status);
+
+  if (task === 'avatar') {
+    return handleAvatar(uid, body, keyEarly);
+  }
+
+  const asset_id = cleanId(body.asset_id);
+  const variante = Number.isInteger(body.variante) ? body.variante : parseInt(body.variante, 10);
+  const format = ['1:1', '4:5', '9:16'].includes(body.format) ? body.format : null;
+  const stil = body.stil ? String(body.stil).trim().slice(0, 300) : '';
+  const key = keyEarly;
+
+  if (!asset_id) return jsonResp({ error: 'Kein Asset angegeben.' }, 400);
+  if (!Number.isInteger(variante) || variante < 0) return jsonResp({ error: 'Ungültige Variante.' }, 400);
+  if (!format) return jsonResp({ error: 'Ungültiges Format. Erlaubt sind 1:1, 4:5 oder 9:16.' }, 400);
 
   let asset;
   try {
@@ -247,4 +369,7 @@ export default async (req) => {
   });
 };
 
-export const _test = { generateImage, buildPrompt, randomPath, SIZE_BY_FORMAT, FALLBACK_SIZE_BY_FORMAT };
+export const _test = {
+  generateImage, buildPrompt, randomPath, SIZE_BY_FORMAT, FALLBACK_SIZE_BY_FORMAT,
+  avatarPath, buildAvatarPrompt, AVATAR_STIL_ANWEISUNG, AVATAR_STILE,
+};

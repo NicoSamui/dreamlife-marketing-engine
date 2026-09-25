@@ -28,6 +28,9 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const VALID_TASKS = ['analyse', 'verfeinern', 'winkel', 'asset', 'konsistenz', 'decode'];
+// Awareness-Stufen fuer Task "winkel" mit mehr:true (SPEC §11.5): "mehr" liefert 5 neue
+// Winkel NUR fuer eine gewaehlte Stufe, darum ist "awareness" dann Pflicht.
+const VALID_AWARENESS = ['unbewusst', 'problembewusst', 'loesungsbewusst', 'produktbewusst', 'meistbewusst'];
 // Eigene Storage-Praefix-URL fuer Referenzbilder des Creative-Decoders (siehe db.js
 // upload_reference). Nur Bilder aus diesem Bucket-Pfad duerfen dekodiert werden, damit
 // niemand eine beliebige fremde Bild-URL an Anthropic schicken kann.
@@ -83,9 +86,13 @@ export default async (req) => {
   const mehr = !!body.mehr;
   const anzahl = Number.isFinite(body.anzahl) ? body.anzahl : null;
   const template_id = cleanId(body.template_id);
+  const awareness = body.awareness ? String(body.awareness).trim() : '';
 
   if (!uid) return jsonResp({ error: 'Kein Nutzer erkannt. Bitte über Learning Suite öffnen.' }, 401);
   if (!VALID_TASKS.includes(task)) return jsonResp({ error: 'Unbekannte Aufgabe.' }, 400);
+  if (task === 'winkel' && mehr && !VALID_AWARENESS.includes(awareness)) {
+    return jsonResp({ error: 'Bitte eine Awareness-Stufe angeben (unbewusst, problembewusst, loesungsbewusst, produktbewusst oder meistbewusst).' }, 400);
+  }
   if (task === 'decode') {
     if (!template_id) return jsonResp({ error: 'Keine Vorlage angegeben.' }, 400);
   } else if (!project_id) {
@@ -233,7 +240,7 @@ export default async (req) => {
     const res = await fetch(base + '/.netlify/functions/ai-background', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-me-internal': internalToken(job.id) },
-      body: JSON.stringify({ job_id: job.id, hinweis, winkel_id, mehr, anzahl }),
+      body: JSON.stringify({ job_id: job.id, hinweis, winkel_id, mehr, anzahl, awareness }),
     });
     if (!res || (res.status !== 202 && !res.ok)) {
       await markJobFehler(job.id, task, ctx, 'Die Hintergrund-Verarbeitung konnte nicht gestartet werden.');

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dreamlife Marketing Engine</title>
 <meta name="description" content="Dreamlife Marketing Engine: Zielgruppenanalyse, Marketing-Winkel und Kampagnen-Assets für dein Projekt.">
-<script>window.APP_VERSION="1.1.0";</script>
+<script>window.APP_VERSION="1.2.0";</script>
 <script>
 (function(){
   try{
@@ -29,8 +29,11 @@
 
     <header class="dlp-bar" id="dlm-bar">
       <div class="dlp-brand"><span class="dlp-dot" aria-hidden="true"></span><span class="dlm-brand-full">Dreamlife Marketing Engine</span><span class="dlm-brand-short">Marketing Engine</span></div>
+      <nav class="dlm-mainnav" id="dlm-mainnav" aria-label="Hauptnavigation">
+        <a class="dlm-mainnav-link dlm-nav-active" data-nav="avatare" href="#/">Avatare</a>
+        <a class="dlm-mainnav-link" data-nav="vorlagen" href="#/vorlagen">Vorlagen</a>
+      </nav>
       <nav class="dlm-crumbs" id="dlm-crumbs" aria-label="Navigation"></nav>
-      <a class="dlm-nav-link" id="dlm-nav-vorlagen" href="#/vorlagen">Creative-Vorlagen</a>
       <div class="dlp-bar-right">
         <span class="dlm-hello" id="dlm-hello"></span>
         <button type="button" class="dlp-theme" id="dlm-theme-btn" aria-label="Hell/Dunkel umschalten">
@@ -43,8 +46,23 @@
     <main id="app" class="dlm-main"></main>
 
     <footer class="dlm-footer">
-      <span>Dreamlife Marketing Engine · Version <span id="dlm-version">1.1.0</span></span>
+      <span>Dreamlife Marketing Engine · Version <span id="dlm-version">1.2.0</span></span>
     </footer>
+
+    <nav class="dlm-tabbar" id="dlm-tabbar" aria-label="Mobile Navigation">
+      <a class="dlm-tabbar-link dlm-nav-active" data-nav="avatare" href="#/">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"></circle><path d="M4.5 20c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7"></path></svg>
+        <span>Avatare</span>
+      </a>
+      <a class="dlm-tabbar-link" data-nav="vorlagen" href="#/vorlagen">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="10" r="1.6"></circle><path d="M21 16l-5.5-5.5L9 17"></path></svg>
+        <span>Vorlagen</span>
+      </a>
+      <button type="button" class="dlm-tabbar-link" id="dlm-tabbar-hilfe">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.5 2.5 0 1 1 3.7 2.2c-.9.5-1.2 1-1.2 1.9"></path><circle cx="12" cy="17" r="0.4" fill="currentColor"></circle></svg>
+        <span>Hilfe</span>
+      </button>
+    </nav>
 
   </div>
 
@@ -76,6 +94,7 @@
   </div>
 
   <script src="/shared/dl-identity.js"></script>
+  <script src="/shared/freebie.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

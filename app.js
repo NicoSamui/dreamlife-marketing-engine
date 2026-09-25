@@ -99,13 +99,13 @@
     lockTitle: 'Anmeldung erforderlich',
     lockText: 'Die Dreamlife Marketing Engine öffnet sich nur über deinen Mitgliederbereich in LearningSuite.',
     hello: 'Hallo',
-    breadcrumbProjects: 'Projekte',
+    breadcrumbProjects: 'Avatare',
     footerVersion: 'Version',
     newVersion: 'Neue Version, bitte neu laden.',
     reload: 'Neu laden',
-    newProject: 'Neues Projekt',
-    newProjectTitle: 'Neues Projekt anlegen',
-    projectName: 'Name des Projekts',
+    newProject: 'Neuen Avatar anlegen',
+    newProjectTitle: 'Neuen Avatar anlegen',
+    projectName: 'Name deines Avatars',
     projectNamePh: 'z. B. Coaching für Zahnärzte',
     create: 'Anlegen',
     cancel: 'Abbrechen',
@@ -113,13 +113,17 @@
     rename: 'Umbenennen',
     archive: 'Archivieren',
     delete: 'Löschen',
-    projectsEmpty: 'Noch kein Projekt angelegt. Leg dein erstes Projektordner an.',
+    projectsEmpty: 'Noch kein Avatar angelegt. Leg deinen ersten Avatar an.',
     tabBrief: 'Brief',
     tabZielgruppe: 'Zielgruppe',
     tabWinkel: 'Winkel',
     tabKampagnen: 'Kampagnen',
     briefHelp: 'Je konkreter, desto besser wird die Analyse.',
     briefSaved: 'Gespeichert.',
+    briefEditAll: 'Alle Felder bearbeiten',
+    briefRestartInterview: 'Interview neu starten',
+    briefRestartInterviewConfirm: 'Das Interview wird von vorn gestartet, deine bisherigen Antworten bleiben im Formular erhalten. Fortfahren?',
+    laterAnswered: 'Später beantworten',
     zielgruppeEmptyTitle: 'Noch keine Zielgruppenanalyse',
     zielgruppeEmptyText: 'Erzeuge eine ausführliche Zielgruppenanalyse auf Basis deines Briefs. Das dauert 2 bis 4 Minuten, du kannst währenddessen den Tab wechseln.',
     zielgruppeCreate: 'Zielgruppenanalyse erstellen',
@@ -128,9 +132,9 @@
     zielgruppeExport: 'Als Text exportieren',
     zielgruppeRedoConfirm: 'Die bestehende Analyse wird ersetzt. Fortfahren?',
     winkelEmptyTitle: 'Noch keine Marketing-Winkel',
-    winkelEmptyText: 'Lass aus deiner Analyse 16 bis 20 Marketing-Winkel erzeugen und wähle davon 5 bis 10 aus.',
+    winkelEmptyText: 'Lass aus deiner Analyse 25 Marketing-Winkel erzeugen (5 je Awareness-Stufe) und wähle davon 5 bis 10 aus.',
     winkelCreate: 'Marketing-Winkel erzeugen',
-    winkelMore: '8 weitere Winkel',
+    winkelMoreStufe: '5 weitere für diese Stufe',
     winkelCountUnder: 'gewählt (mindestens 5 nötig)',
     winkelCountOk: 'gewählt',
     winkelCountOver: 'zu viele gewählt (maximal 10)',
@@ -143,6 +147,8 @@
     kampagneZiel: 'Ziel',
     kampagneWinkel: 'Winkel (mindestens einer)',
     kampagneAngebot: 'Angebot',
+    kampagneBauen: 'Kampagne bauen',
+    kampagneBauenHint: 'Wähle zuerst 5 bis 10 Winkel aus, dann kannst du eine Kampagne bauen.',
     needFiveWinkel: 'Wähle zuerst mindestens 5 Winkel aus, bevor du eine Kampagne anlegst.',
     needAnalyse: 'Erzeuge zuerst eine Zielgruppenanalyse.',
     consistencyCheck: 'Konsistenz prüfen',
@@ -164,21 +170,24 @@
     statusFertig: 'Fertig',
     statusFehler: 'Fehler',
     statusLeer: 'Leer',
-    introTitle1: '1. Projekt anlegen',
-    introText1: 'Leg für jede Geschäftsidee ein Projekt an: Firma, Branche, Dienstleistungen und Angebot.',
+    introTitle1: '1. Avatar anlegen',
+    introText1: 'Leg für jede Zielperson einen Avatar an. Im Interview erzählst du in wenigen Fragen von Firma, Branche und Angebot, per Text oder Sprachmemo.',
     introTitle2: '2. Zielgruppe und Winkel',
-    introText2: 'Aus deinem Brief entsteht eine ausführliche Zielgruppenanalyse. Daraus wählst du 5 bis 10 Marketing-Winkel aus.',
-    introTitle3: '3. Kampagnen und Assets',
-    introText3: 'Pro Kampagne erzeugst du fertige Marketing-Assets: Bild-Creatives, Reels, Captions, E-Mails, VSL, Leadmagnet und Funnel.',
+    introText2: 'Aus dem Interview entsteht eine ausführliche Zielgruppenanalyse mit Avatar-Bild. Daraus wählst du 5 bis 10 Marketing-Winkel aus.',
+    introTitle3: '3. Kampagne bauen',
+    introText3: 'Sobald du Winkel gewählt hast, baust du eine Kampagne und erzeugst fertige Marketing-Assets: Bild-Creatives, Reels, Captions, E-Mails, VSL, Leadmagnet und Funnel.',
     introNext: 'Weiter',
     introBack: 'Zurück',
     introDone: 'Los geht\'s',
+    navAvatare: 'Avatare',
+    navVorlagen: 'Vorlagen',
+    navHilfe: 'Hilfe',
     formatImg: 'Bild erzeugen',
     imgLoading: 'Bild wird erzeugt...',
     imgDownload: 'Herunterladen',
     genericError: 'Da ist etwas schiefgelaufen.',
     confirmDeleteAsset: 'Dieses Asset wirklich löschen?',
-    confirmDeleteProject: 'Dieses Projekt wirklich archivieren?',
+    confirmDeleteProject: 'Diesen Avatar wirklich archivieren?',
     vorlagenNav: 'Creative-Vorlagen',
     vorlagenTitle: 'Creative-Vorlagen',
     vorlagenIntro: 'Lade ein Werbebild hoch, das dir gefällt. Die KI zerlegt Aufbau, Headline, Design und Wirkung und macht daraus eine Vorlage, nach der du eigene Creatives erzeugst.',
@@ -195,7 +204,42 @@
     vorlagenConfirmRedo: 'Die bestehende Analyse wird ersetzt. Fortfahren?',
     vorlagenNotFound: 'Vorlage nicht gefunden.',
     assetVorlage: 'Vorlage (optional)',
-    assetVorlageNone: 'Ohne Vorlage'
+    assetVorlageNone: 'Ohne Vorlage',
+    interviewWeiter: 'Weiter',
+    interviewZurueck: 'Zurück',
+    interviewPflicht: 'Diese Frage ist Pflicht, bitte etwas eintragen.',
+    interviewFrageVon: 'Frage {n} von {gesamt}',
+    interviewMicStart: 'Sprachmemo aufnehmen',
+    interviewMicStop: 'Aufnahme beenden',
+    interviewMicUnavailable: 'Mikrofon nicht verfügbar, bitte tippen.',
+    interviewTranscribing: 'Wird umgewandelt...',
+    interviewSummaryTitle: 'Alles zusammengefasst',
+    interviewSummaryText: 'Prüfe deine Angaben, du kannst noch alles ändern.',
+    interviewStartAnalyse: 'Zielgruppenanalyse starten',
+    avatarBilderHint: 'Bilder gibt es nach der Zielgruppenanalyse.',
+    avatarBilderTitle: 'Avatar-Bilder',
+    avatarBildErzeugen: 'Erzeugen',
+    avatarBilderAlle: 'Alle drei erzeugen',
+    avatarBildLaeuft: 'Wird erzeugt...',
+    freebieTheme: 'Design',
+    freebieAkzent: 'Akzentfarbe',
+    freebiePrint: 'Als PDF drucken',
+    freebieDownload: 'HTML herunterladen',
+    freebieCopyText: 'Text kopieren'
+  };
+
+  var AWARENESS_INFO = {
+    unbewusst: 'Die Person weiß noch nicht, dass sie ein Problem hat.',
+    problembewusst: 'Sie spürt das Problem, kennt aber keine Lösung.',
+    loesungsbewusst: 'Sie kennt Lösungswege, aber nicht dein Angebot.',
+    produktbewusst: 'Sie kennt dein Angebot, ist aber noch nicht überzeugt.',
+    meistbewusst: 'Sie ist fast entschlossen und braucht den letzten Anstoß.'
+  };
+
+  var TYP_LABEL = {
+    Mechanismus: 'Mechanismus', Feind: 'Feind', Kontrast: 'Kontrast', Story: 'Story', Zahlen: 'Zahlen',
+    Zeit: 'Zeit', Identität: 'Identität', 'Neue Chance': 'Neue Chance', Warnung: 'Warnung',
+    Frage: 'Frage', Geheimnis: 'Geheimnis', Status: 'Status'
   };
 
   var STATUS_TEXTS = {
@@ -222,6 +266,14 @@
     ['einwaende', 'Einwände'], ['awareness_stufe', 'Awareness-Stufe'], ['glaubenssaetze', 'Glaubenssätze'],
     ['sprache_zitate', 'Sprache und wörtliche Zitate'], ['kaufausloeser', 'Kaufauslöser'],
     ['kanaele', 'Kanäle'], ['entscheidungsprozess', 'Entscheidungsprozess'], ['zusammenfassung', 'Zusammenfassung']
+  ];
+
+  /* Zielgruppen-Bereiche nach SPEC §11.6: 4 grosse Bereiche mit Sprungleiste. */
+  var ANALYSE_AREAS = [
+    { key: 'wer', label: 'Wer', cats: ['basisprofil', 'wissensstand', 'marktwissen'] },
+    { key: 'schmerz', label: 'Schmerz und Wunsch', cats: ['weg_von', 'hin_zu', 'reale_situationen'] },
+    { key: 'psychologie', label: 'Psychologie', cats: ['disg', 'life_force_8', 'sekundaere_wuensche_9', 'einwaende', 'awareness_stufe', 'glaubenssaetze', 'sprache_zitate'] },
+    { key: 'kaufen', label: 'Kaufen', cats: ['kaufausloeser', 'kanaele', 'entscheidungsprozess', 'zusammenfassung'] }
   ];
 
   /* Kleine Inline-SVG-Icons (Befund 6), keine externen Assets. */
@@ -263,6 +315,24 @@
     ['produktbewusst', 'Produktbewusst'], ['meistbewusst', 'Meistbewusst']
   ];
 
+  /* Interview-Fragen nach SPEC §11.4, feste Reihenfolge, feste Zuordnung zu Brief-Feldern. */
+  var INTERVIEW_QUESTIONS = [
+    { feld: 'firma', frage: 'Wie heißt dein Unternehmen oder dein Projekt?', optional: false, type: 'text' },
+    { feld: 'branche', frage: 'In welcher Branche bist du unterwegs?', optional: false, type: 'text' },
+    { feld: 'dienstleistungen', frage: 'Was genau bietest du an? Erzähl ruhig ausführlich.', optional: false, type: 'textarea' },
+    { feld: 'angebot_kurz', frage: 'Wenn du dein Angebot in einem Satz erklären müsstest, wie klingt der?', optional: true, type: 'textarea' },
+    { feld: 'zielkunde_vermutung', frage: 'Wer ist deiner Meinung nach dein idealer Kunde? Beschreib die Person, so gut du kannst.', optional: true, type: 'textarea' },
+    { feld: 'preisniveau', frage: 'Auf welchem Preisniveau bewegst du dich?', optional: true, type: 'chips', options: PREISNIVEAU },
+    { feld: 'b2b_b2c', frage: 'Verkaufst du an Unternehmen oder an Privatpersonen?', optional: true, type: 'chips', options: B2B_B2C },
+    { feld: 'region', frage: 'In welcher Region bist du aktiv?', optional: true, type: 'text' },
+    { feld: 'usp', frage: 'Was machst du anders oder besser als andere?', optional: true, type: 'textarea' },
+    { feld: 'kunden_beispiele', frage: 'Erzähl von zwei oder drei echten Kunden: Wer waren sie, was war ihr Problem?', optional: true, type: 'textarea' },
+    { feld: 'wettbewerber', frage: 'Wer sind deine wichtigsten Wettbewerber?', optional: true, type: 'textarea' },
+    { feld: 'tonalitaet', frage: 'Welche Tonalität passt zu dir?', optional: true, type: 'chips', options: TONALITAET },
+    { feld: 'notizen', frage: 'Gibt es noch etwas, das die KI wissen sollte?', optional: true, type: 'textarea' }
+  ];
+  var AVATAR_STILE = [['foto', 'Foto'], ['illustration', 'Illustration'], ['karikatur', 'Karikatur']];
+
   /* ------------------------------------------------------------------
      2) Zustand
      ------------------------------------------------------------------ */
@@ -278,7 +348,10 @@
     winkelFilter: 'alle',
     templates: null,
     template: null,
-    running: {}      /* key -> { controller, statusIdx, chars, timer } */
+    running: {},      /* key -> { controller, statusIdx, chars, timer } */
+    interviewIdx: {},  /* project.id -> aktuell angezeigte Fragen-Nr (1-basiert, > Anzahl = Zusammenfassung) */
+    recording: null,   /* { recorder, stream, chunks, timer, seconds, feld } - aktuelle Sprachmemo-Aufnahme */
+    freebieDesign: {}  /* asset.id -> { theme, akzent } waehrend der Bearbeitung im Asset-Panel */
   };
 
   /* ------------------------------------------------------------------
@@ -609,12 +682,16 @@
     var el = $('dlm-crumbs');
     if (!el) return;
     var parts = [{ label: T.breadcrumbProjects, href: '#/' }];
-    if (route.name === 'project' || route.name === 'campaign') {
-      var pname = STATE.project ? STATE.project.name : '...';
+    if (route.name === 'project' || route.name === 'campaign' || route.name === 'kampagnen') {
+      var pname = STATE.project ? avatarDisplayName(STATE.project) : '...';
       parts.push({ label: pname, href: '#/p/' + route.projectId });
+    }
+    if (route.name === 'kampagnen') {
+      parts.push({ label: T.tabKampagnen, href: null });
     }
     if (route.name === 'campaign') {
       var cname = STATE.campaign ? STATE.campaign.name : '...';
+      parts.push({ label: T.tabKampagnen, href: '#/p/' + route.projectId + '/kampagnen' });
       parts.push({ label: cname, href: null });
     }
     if (route.name === 'vorlagen' || route.name === 'vorlage-detail') {
@@ -624,6 +701,9 @@
       var tname = STATE.template ? STATE.template.name : '...';
       parts.push({ label: tname, href: null });
     }
+    // Erste Ebene (Avatare/Vorlagen) steht schon als Hauptpunkt in der Leiste, deshalb nur die tieferen Ebenen zeigen.
+    if (parts.length > 1) parts = parts.slice(1);
+    else parts = [];
     el.innerHTML = parts.map(function (p, i) {
       var sep = i > 0 ? '<span class="dlm-crumb-sep">&rsaquo;</span>' : '';
       if (p.href) return sep + '<a class="dlm-crumb" href="' + esc(p.href) + '">' + esc(p.label) + '</a>';
@@ -659,6 +739,7 @@
     if (parts[0] === 'p' && parts[1]) {
       route.projectId = parts[1];
       if (parts[2] === 'k' && parts[3]) { route.name = 'campaign'; route.campaignId = parts[3]; }
+      else if (parts[2] === 'kampagnen') { route.name = 'kampagnen'; }
       else route.name = 'project';
     } else if (parts[0] === 'vorlagen') {
       if (parts[1]) { route.name = 'vorlage-detail'; route.templateId = parts[1]; }
@@ -674,15 +755,25 @@
 
   function route() {
     var r = parseHash();
+    updateNavActive(r);
     if (r.name === 'projects') { STATE.project = null; STATE.campaign = null; renderCrumbs(r); renderProjectsView(); return; }
     if (r.name === 'project') { renderProjectRoute(r); return; }
+    if (r.name === 'kampagnen') { renderProjectKampagnenRoute(r); return; }
     if (r.name === 'campaign') { renderCampaignRoute(r); return; }
     if (r.name === 'vorlagen') { STATE.project = null; STATE.campaign = null; STATE.template = null; renderCrumbs(r); renderVorlagenView(); return; }
     if (r.name === 'vorlage-detail') { renderVorlagenDetailRoute(r); return; }
   }
 
+  function updateNavActive(r) {
+    var isVorlagen = r.name === 'vorlagen' || r.name === 'vorlage-detail';
+    qsa('[data-nav]').forEach(function (el) {
+      var on = (el.getAttribute('data-nav') === 'vorlagen') === isVorlagen;
+      el.classList.toggle('dlm-nav-active', on);
+    });
+  }
+
   /* ------------------------------------------------------------------
-     12) Ansicht: Projekte
+     12) Ansicht: Avatare (SPEC §11.1)
      ------------------------------------------------------------------ */
   function statusChips(p) {
     var an = p.analyse_status === 'fertig' ? 'Analyse fertig' : (p.analyse_status === 'laeuft' ? 'Analyse laeuft' : 'Analyse offen');
@@ -692,11 +783,38 @@
       '<span class="dlm-chip">Winkel ' + wn + '/10</span>';
   }
 
+  /* Avatar-Objekt (immer ein Objekt, nie null/undefined). */
+  function avatarOf(p) { return (p && p.avatar && typeof p.avatar === 'object') ? p.avatar : {}; }
+  function avatarDisplayName(p) { var a = avatarOf(p); return a.name || (p && p.name) || ''; }
+  function avatarInitials(name) {
+    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  function avatarChosenImageUrl(p) {
+    var a = avatarOf(p);
+    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
+    var chosen = a.gewaehlt ? bilder.filter(function (b) { return b && b.stil === a.gewaehlt; })[0] : bilder[0];
+    return chosen ? chosen.url : null;
+  }
+  function avatarPicHtml(p, size) {
+    var url = avatarChosenImageUrl(p);
+    var name = avatarDisplayName(p);
+    if (url) return '<img class="dlm-avatar-pic" style="width:' + size + 'px;height:' + size + 'px;" src="' + esc(url) + '" alt="">';
+    return '<span class="dlm-avatar-pic dlm-avatar-initials" style="width:' + size + 'px;height:' + size + 'px;">' + esc(avatarInitials(name)) + '</span>';
+  }
+  function kampagneBauenBtn(p, cls) {
+    var enabled = arr(p.winkel_auswahl).length >= 5;
+    var title = enabled ? '' : ' title="' + esc(T.kampagneBauenHint) + '"';
+    return '<button type="button" class="dlp-btn dlp-primary ' + (cls || '') + '" data-action="go-kampagnen" data-id="' + esc(p.id) + '"' +
+      (enabled ? '' : ' disabled') + title + '>' + esc(T.kampagneBauen) + '</button>';
+  }
+
   function renderProjectsView() {
     var app = $('app');
     app.innerHTML = '<div class="dlm-wrap"><div class="dlm-head-row"><h1>' + esc(T.breadcrumbProjects) + '</h1>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-      '<a class="dlp-btn dlp-ghost" href="#/vorlagen">' + esc(T.vorlagenNav) + '</a>' +
       '<button type="button" class="dlp-btn dlp-primary" data-action="new-project">' + esc(T.newProject) + '</button>' +
       '</div></div>' +
       '<div id="dlm-projects-grid" class="dlm-grid dlm-projects-grid"><div class="dlm-loading">Lädt...</div></div></div>';
@@ -709,20 +827,27 @@
         '<span class="dlm-new-plus" aria-hidden="true">+</span><span>' + esc(T.newProject) + '</span></div>';
       if (!STATE.projects.length) {
         grid.innerHTML = '<div class="dlm-empty-block"><h3>' + esc(T.projectsEmpty) + '</h3>' +
-          '<p>Leg dein erstes Projekt an und starte mit dem Brief.</p>' +
+          '<p>Leg deinen ersten Avatar an und starte mit dem Interview.</p>' +
           '<button type="button" class="dlp-btn dlp-primary" data-action="new-project">' + esc(T.newProject) + '</button></div>';
         return;
       }
       grid.innerHTML = STATE.projects.map(function (p) {
-        return '<div class="dlp-card dlm-project-card" data-open-project="' + esc(p.id) + '">' +
+        var a = avatarOf(p);
+        var berufZeile = [a.alter ? (a.alter + ' Jahre') : '', a.beruf || ''].filter(Boolean).join(' · ');
+        return '<div class="dlp-card dlm-project-card dlm-avatar-card" data-open-project="' + esc(p.id) + '">' +
           '<div class="dlm-card-menu" data-menu="' + esc(p.id) + '">' +
           '<button type="button" class="dlm-icon-btn" data-action="project-menu" data-id="' + esc(p.id) + '" aria-label="Menü">' +
           '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button></div>' +
-          '<h3 class="dlm-project-title">' + ICONS.ordner + '<span>' + esc(p.name) + '</span></h3>' +
-          '<p class="dlm-muted dlm-branch-row">' + esc((p.brief && p.brief.branche) || 'Ohne Branche') + '</p>' +
+          '<div class="dlm-avatar-card-head">' + avatarPicHtml(p, 56) +
+          '<div><h3 class="dlm-project-title"><span>' + esc(avatarDisplayName(p) || p.name) + '</span></h3>' +
+          (berufZeile ? '<p class="dlm-muted dlm-small">' + esc(berufZeile) + '</p>' : '') + '</div></div>' +
+          '<p class="dlm-muted dlm-branch-row dlm-small">' + esc([p.brief && p.brief.firma, p.brief && p.brief.branche].filter(Boolean).join(' · ') || 'Ohne Branche') + '</p>' +
           '<div class="dlm-chips">' + statusChips(p) + '<span class="dlm-chip">Kampagnen&nbsp;<span data-camp-count="' + esc(p.id) + '">...</span></span></div>' +
           '<p class="dlm-muted dlm-small">Zuletzt bearbeitet ' + esc(fmtDate(p.updated_at)) + '</p>' +
-          '</div>';
+          '<div class="dlm-avatar-card-actions">' +
+          '<a class="dlp-btn dlp-ghost" href="#/p/' + esc(p.id) + '">Öffnen</a>' +
+          kampagneBauenBtn(p) +
+          '</div></div>';
       }).join('') + newTile;
       STATE.projects.forEach(function (p) {
         DB.get('me_campaigns?select=id&project_id=eq.' + p.id).then(function (rows) {
@@ -747,9 +872,9 @@
           label: T.create, primary: true, onClick: function () {
             var name = qs('#dlm-new-project-name').value.trim();
             if (!name) { toast('Bitte einen Namen eingeben.'); return false; }
-            DB.post('me_projects', { name: name, brief: {} }, 'return=representation').then(function (rows) {
+            DB.post('me_projects', { name: name, brief: {}, interview: { frage: 1, uebersprungen: [], fertig: false } }, 'return=representation').then(function (rows) {
               var p = rows && rows[0];
-              if (p) location.hash = '#/p/' + p.id;
+              if (p) location.hash = '#/p/' + p.id + '?tab=interview';
             });
           }
         }
@@ -798,28 +923,33 @@
     };
   }
 
+  /* Stepper im Avatar hat nach SPEC §11.1 nur noch 3 Schritte: Brief, Zielgruppe, Winkel.
+     Kampagnen sind kein Stepper-Schritt mehr, sondern eine eigene Route (#/p/<id>/kampagnen),
+     erreichbar ueber den Primaer-Button "Kampagne bauen". */
   function renderProjectRoute(r) {
     var app = $('app');
     app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
     DB.get('me_projects?select=*&id=eq.' + r.projectId).then(function (rows) {
       var p = rows && rows[0];
-      if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Projekt nicht gefunden.</div></div>'; return; }
+      if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Avatar nicht gefunden.</div></div>'; return; }
       STATE.project = p;
       resumeRunningJobs(p.id, null, function () { renderProjectRoute(parseHash()); });
       renderCrumbs(r);
       var tab = r.params.tab || 'brief';
+      if (tab === 'interview') tab = 'brief';
       var st = tabStatus(p);
       if (tab === 'winkel' && !st.winkel) tab = 'brief';
-      if (tab === 'kampagnen' && !st.kampagnen) { /* zeigt Hinweis, kein redirect noetig */ }
 
       app.innerHTML =
         '<div class="dlm-wrap">' +
-        '<h1 class="dlm-title">' + esc(p.name) + '</h1>' +
+        '<div class="dlm-head-row">' +
+        '<div class="dlm-avatar-headline">' + avatarPicHtml(p, 48) + '<h1 class="dlm-title">' + esc(avatarDisplayName(p) || p.name) + '</h1></div>' +
+        kampagneBauenBtn(p) +
+        '</div>' +
         '<nav class="dlm-stepper" id="dlm-stepper">' +
         stepperTab(1, 'brief', T.tabBrief, true, true, tab, '') +
         stepperTab(2, 'zielgruppe', T.tabZielgruppe, true, st.zielgruppe, tab, '') +
         stepperTab(3, 'winkel', T.tabWinkel, st.winkel, st.winkelDone, tab, 'Erst Zielgruppenanalyse erstellen') +
-        stepperTab(4, 'kampagnen', T.tabKampagnen, st.kampagnen, st.kampagnen, tab, 'Erst 5 bis 10 Winkel wählen') +
         '</nav>' +
         '<div id="dlm-tab-body"></div>' +
         '</div>';
@@ -832,8 +962,29 @@
       var body = $('dlm-tab-body');
       if (tab === 'brief') renderBriefTab(body, p);
       else if (tab === 'zielgruppe') renderZielgruppeTab(body, p);
-      else if (tab === 'winkel') renderWinkelTab(body, p);
-      else renderKampagnenTab(body, p);
+      else renderWinkelTab(body, p);
+    }).catch(function () {
+      app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
+    });
+  }
+
+  /* Route #/p/<id>/kampagnen: eigene Seite mit der Kampagnenliste des Avatars
+     (SPEC §11.1), ausserhalb des Steppers. */
+  function renderProjectKampagnenRoute(r) {
+    var app = $('app');
+    app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
+    DB.get('me_projects?select=*&id=eq.' + r.projectId).then(function (rows) {
+      var p = rows && rows[0];
+      if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Avatar nicht gefunden.</div></div>'; return; }
+      STATE.project = p;
+      renderCrumbs(r);
+      app.innerHTML = '<div class="dlm-wrap">' +
+        '<div class="dlm-head-row">' +
+        '<div class="dlm-avatar-headline">' + avatarPicHtml(p, 48) + '<h1 class="dlm-title">' + esc(T.tabKampagnen) + ' · ' + esc(avatarDisplayName(p) || p.name) + '</h1></div>' +
+        '<a class="dlp-btn dlp-ghost" href="#/p/' + esc(p.id) + '">Zum Avatar</a>' +
+        '</div>' +
+        '<div id="dlm-tab-body"></div></div>';
+      renderKampagnenTab($('dlm-tab-body'), p);
     }).catch(function () {
       app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
     });
@@ -869,9 +1020,33 @@
     ['notizen', 'Notizen', 'textarea', true]
   ];
 
+  function briefFieldLabel(key) {
+    var f = BRIEF_FIELDS.filter(function (x) { return x[0] === key; })[0];
+    return f ? f[1] : key;
+  }
+
+  /* Tab Brief (SPEC §11.4): zeigt fuer Avatare mit interview.fertig das Formular,
+     sonst das Interview-Onboarding. */
   function renderBriefTab(body, p) {
+    var interview = p.interview || {};
+    if (interview.fertig) renderBriefForm(body, p);
+    else renderInterviewFlow(body, p);
+  }
+
+  function renderBriefForm(body, p) {
     var brief = p.brief || {};
-    var html = '<form id="dlm-brief-form" class="dlm-form">';
+    var interview = p.interview || {};
+    var uebersprungen = arr(interview.uebersprungen);
+    var html = '<div class="dlm-toolbar">' +
+      '<button type="button" class="dlm-text-btn" data-action="restart-interview" data-id="' + esc(p.id) + '">' + esc(T.briefRestartInterview) + '</button>' +
+      '</div>';
+    if (uebersprungen.length) {
+      html += '<div class="dlm-chips" style="margin-bottom:14px;">' + uebersprungen.map(function (feld) {
+        return '<button type="button" class="dlm-chip dlm-chip-warn dlm-skip-chip" data-action="jump-interview" data-id="' + esc(p.id) + '" data-feld="' + esc(feld) + '">' +
+          esc(T.laterAnswered) + ': ' + esc(briefFieldLabel(feld)) + '</button>';
+      }).join('') + '</div>';
+    }
+    html += '<form id="dlm-brief-form" class="dlm-form">';
     BRIEF_FIELDS.forEach(function (f) {
       var key = f[0], label = f[1], type = f[2], optional = f[3], opts = f[4];
       var val = brief[key] || '';
@@ -907,7 +1082,249 @@
     form.addEventListener('change', save);
   }
 
+  /* ------------------------------------------------------------------
+     13b) Interview-Onboarding (SPEC §11.4)
+     ------------------------------------------------------------------ */
+  function interviewCurrentIdx(p) {
+    if (typeof STATE.interviewIdx[p.id] === 'number') return STATE.interviewIdx[p.id];
+    var fromSrv = (p.interview && p.interview.frage) || 1;
+    return Math.max(1, Math.min(fromSrv, INTERVIEW_QUESTIONS.length + 1));
+  }
+  function interviewSetIdx(p, idx) {
+    STATE.interviewIdx[p.id] = idx;
+  }
+
+  function stopRecording(discard) {
+    var rec = STATE.recording;
+    if (!rec) return;
+    STATE.recording = null;
+    if (rec.timer) clearInterval(rec.timer);
+    try { if (rec.recorder && rec.recorder.state !== 'inactive') rec.recorder.stop(); } catch (e) {}
+    if (rec.stream) rec.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e2) {} });
+    if (discard) rec._discard = true;
+  }
+
+  function renderInterviewFlow(body, p) {
+    var idx = interviewCurrentIdx(p);
+    if (idx > INTERVIEW_QUESTIONS.length) { renderInterviewSummary(body, p); return; }
+    var q = INTERVIEW_QUESTIONS[idx - 1];
+    var brief = p.brief || {};
+    var val = brief[q.feld] || '';
+    var total = INTERVIEW_QUESTIONS.length;
+    var pct = Math.round(((idx - 1) / total) * 100);
+    var micSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+
+    var html = '<div class="dlm-interview">' +
+      '<p class="dlm-interview-progress-label">' + esc(T.interviewFrageVon.replace('{n}', idx).replace('{gesamt}', total)) + '</p>' +
+      '<div class="dlm-progress-bar"><div class="dlm-progress-fill" style="width:' + pct + '%;animation:none;"></div></div>' +
+      '<h2 class="dlm-interview-frage">' + esc(q.frage) + '</h2>';
+
+    if (q.type === 'chips') {
+      html += '<div class="dlm-chips dlm-interview-chips" id="dlm-interview-chips">' + q.options.map(function (o) {
+        return '<button type="button" class="dlm-chip dlm-filter-chip' + (val === o[0] ? ' dlm-chip-active' : '') + '" data-chip-val="' + esc(o[0]) + '">' + esc(o[1]) + '</button>';
+      }).join('') + '</div><input type="hidden" id="dlm-interview-input" value="' + esc(val) + '">';
+    } else {
+      html += '<textarea id="dlm-interview-input" rows="' + (q.type === 'textarea' ? 6 : 2) + '" maxlength="4000" placeholder="Antwort eingeben...">' + esc(val) + '</textarea>';
+      if (micSupported) {
+        html += '<div class="dlm-interview-mic">' +
+          '<button type="button" class="dlp-btn dlp-ghost" id="dlm-mic-btn" data-action="mic-toggle">' + esc(T.interviewMicStart) + '</button>' +
+          '<span id="dlm-mic-status" class="dlm-small"></span></div>';
+      }
+    }
+
+    html += '<div class="dlm-interview-actions">' +
+      (idx > 1 ? '<button type="button" class="dlp-btn dlp-ghost" data-action="interview-back">' + esc(T.interviewZurueck) + '</button>' : '<span></span>') +
+      '<span style="flex:1 1 auto;"></span>' +
+      (q.optional ? '<button type="button" class="dlp-btn dlp-ghost" data-action="interview-skip">' + esc(T.laterAnswered) + '</button>' : '') +
+      '<button type="button" class="dlp-btn dlp-primary" data-action="interview-next">' + esc(T.interviewWeiter) + '</button>' +
+      '</div></div>';
+    body.innerHTML = html;
+
+    if (q.type === 'chips') {
+      qsa('#dlm-interview-chips [data-chip-val]', body).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          qsa('#dlm-interview-chips .dlm-chip', body).forEach(function (b) { b.classList.remove('dlm-chip-active'); });
+          btn.classList.add('dlm-chip-active');
+          $('dlm-interview-input').value = btn.getAttribute('data-chip-val');
+        });
+      });
+    }
+
+    var micBtn = $('dlm-mic-btn');
+    if (micBtn) micBtn.addEventListener('click', function () { interviewMicToggle(p, q); });
+
+    qs('[data-action="interview-back"]', body) && qs('[data-action="interview-back"]', body).addEventListener('click', function () {
+      stopRecording(true);
+      interviewSetIdx(p, Math.max(1, idx - 1));
+      renderBriefTab(body, p);
+    });
+    qs('[data-action="interview-skip"]', body) && qs('[data-action="interview-skip"]', body).addEventListener('click', function () {
+      stopRecording(true);
+      var interview = Object.assign({ frage: 1, uebersprungen: [] }, p.interview);
+      var skip = arr(interview.uebersprungen).slice();
+      if (skip.indexOf(q.feld) === -1) skip.push(q.feld);
+      interview.uebersprungen = skip;
+      interview.frage = idx + 1;
+      interview.fertig = idx + 1 > total;
+      DB.patch('me_projects?id=eq.' + p.id, { interview: interview }).then(function () {
+        p.interview = interview;
+        interviewSetIdx(p, idx + 1);
+        renderBriefTab(body, p);
+      });
+    });
+    qs('[data-action="interview-next"]', body).addEventListener('click', function () {
+      stopRecording(true);
+      var inputEl = $('dlm-interview-input');
+      var value = inputEl ? inputEl.value.trim() : '';
+      if (!q.optional && !value) { toast(T.interviewPflicht); return; }
+      var brief2 = Object.assign({}, p.brief);
+      brief2[q.feld] = value;
+      var interview = Object.assign({ frage: 1, uebersprungen: [] }, p.interview);
+      var skip = arr(interview.uebersprungen).filter(function (f) { return f !== q.feld; });
+      interview.uebersprungen = skip;
+      interview.frage = idx + 1;
+      interview.fertig = idx + 1 > total;
+      DB.patch('me_projects?id=eq.' + p.id, { brief: brief2, interview: interview }).then(function () {
+        p.brief = brief2;
+        p.interview = interview;
+        interviewSetIdx(p, idx + 1);
+        renderBriefTab(body, p);
+      });
+    });
+  }
+
+  function interviewMicToggle(p, q) {
+    var btn = $('dlm-mic-btn');
+    var status = $('dlm-mic-status');
+    if (STATE.recording) { stopRecording(); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var mime = (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))
+        ? 'audio/webm;codecs=opus' : 'audio/mp4';
+      var recorder;
+      try { recorder = new MediaRecorder(stream, { mimeType: mime }); } catch (e) { recorder = new MediaRecorder(stream); mime = recorder.mimeType || mime; }
+      var chunks = [];
+      var seconds = 0;
+      var rec = { recorder: recorder, stream: stream, chunks: chunks, seconds: 0, _discard: false };
+      STATE.recording = rec;
+      recorder.addEventListener('dataavailable', function (e) { if (e.data && e.data.size) chunks.push(e.data); });
+      recorder.addEventListener('stop', function () {
+        stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e2) {} });
+        if (rec._discard || !chunks.length) return;
+        var blob = new Blob(chunks, { type: mime.split(';')[0] });
+        transcribeBlob(blob, mime);
+      });
+      recorder.start();
+      if (btn) { btn.textContent = T.interviewMicStop; btn.classList.add('dlm-mic-recording'); }
+      rec.timer = setInterval(function () {
+        rec.seconds += 1;
+        if (status) status.textContent = rec.seconds + ' s';
+        if (rec.seconds >= 90) stopRecording();
+      }, 1000);
+    }).catch(function () {
+      toast(T.interviewMicUnavailable);
+      if (btn) btn.hidden = true;
+    });
+  }
+
+  function transcribeBlob(blob, mime) {
+    var status = $('dlm-mic-status');
+    var btn = $('dlm-mic-btn');
+    if (btn) { btn.textContent = T.interviewMicStart; btn.classList.remove('dlm-mic-recording'); btn.disabled = true; }
+    if (status) status.textContent = T.interviewTranscribing;
+    var ext = mime.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+    var fd = new FormData();
+    fd.append('file', blob, 'memo.' + ext);
+    fd.append('uid', STATE.profile ? STATE.profile.uid : '');
+    fetch('/.netlify/functions/transcribe', { method: 'POST', body: fd }).then(function (r) { return r.json(); }).then(function (res) {
+      if (btn) btn.disabled = false;
+      if (status) status.textContent = '';
+      var text = res && res.text ? String(res.text) : '';
+      if (!text) { toast(T.genericError); return; }
+      var inputEl = $('dlm-interview-input');
+      if (inputEl) inputEl.value = (inputEl.value ? inputEl.value.trim() + '\n' : '') + text;
+    }).catch(function () {
+      if (btn) btn.disabled = false;
+      if (status) status.textContent = '';
+      toast(T.genericError);
+    });
+  }
+
+  function renderInterviewSummary(body, p) {
+    var interview = Object.assign({ frage: INTERVIEW_QUESTIONS.length + 1, uebersprungen: [] }, p.interview);
+    if (!interview.fertig) {
+      interview.fertig = true;
+      DB.patch('me_projects?id=eq.' + p.id, { interview: interview }).then(function () { p.interview = interview; });
+    }
+    var brief = p.brief || {};
+    var html = '<div class="dlm-interview-summary">' +
+      '<h2 class="dlm-interview-frage">' + esc(T.interviewSummaryTitle) + '</h2>' +
+      '<p class="dlm-muted">' + esc(T.interviewSummaryText) + '</p>' +
+      '<form id="dlm-brief-form" class="dlm-form">';
+    BRIEF_FIELDS.forEach(function (f) {
+      var key = f[0], label = f[1], type = f[2], optional = f[3], opts = f[4];
+      var val = brief[key] || '';
+      html += '<label class="dlm-field"><span>' + esc(label) + (optional ? ' <em>(optional)</em>' : '') + '</span>';
+      if (type === 'textarea') html += '<textarea name="' + key + '" rows="3" maxlength="4000">' + esc(val) + '</textarea>';
+      else if (type === 'select') {
+        html += '<select name="' + key + '"><option value="">Bitte wählen</option>' +
+          opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (val === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+      } else html += '<input type="text" name="' + key + '" value="' + esc(val) + '" maxlength="200">';
+      html += '</label>';
+    });
+    html += '</form>' +
+      '<div class="dlm-interview-actions"><span style="flex:1 1 auto;"></span>' +
+      '<button type="button" class="dlp-btn dlp-primary dlp-lg" data-action="interview-start-analyse" data-id="' + esc(p.id) + '">' + esc(T.interviewStartAnalyse) + '</button>' +
+      '</div></div>';
+    body.innerHTML = html;
+
+    var form = $('dlm-brief-form');
+    var save = debounce(function () {
+      var brief2 = {};
+      BRIEF_FIELDS.forEach(function (f) { var el = form.elements[f[0]]; if (el) brief2[f[0]] = el.value; });
+      DB.patch('me_projects?id=eq.' + p.id, { brief: brief2 }).then(function () { p.brief = brief2; });
+    }, 800);
+    form.addEventListener('input', save);
+    form.addEventListener('change', save);
+  }
+
   /* --- Zielgruppe --------------------------------------------------- */
+  /* Avatar-Karte im Tab Zielgruppe (SPEC §11.3): Name/Alter/Beruf/Kurzbeschreibung,
+     drei Bild-Slots (foto/illustration/karikatur) mit Erzeugen-Button je Slot. */
+  function renderAvatarCard(p) {
+    var a = avatarOf(p);
+    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
+    var berufZeile = [a.alter ? (a.alter + ' Jahre') : '', a.beruf || ''].filter(Boolean).join(' · ');
+    var html = '<div class="dlm-avatar-bigcard">' +
+      '<div class="dlm-avatar-bigcard-head">' + avatarPicHtml(p, 72) +
+      '<div><h2 class="dlm-title" style="margin:0;">' + esc(a.name || p.name) + '</h2>' +
+      (berufZeile ? '<p class="dlm-muted">' + esc(berufZeile) + '</p>' : '') + '</div></div>' +
+      (a.kurzbeschreibung ? '<p class="dlm-avatar-kurz">' + esc(a.kurzbeschreibung) + '</p>' : '');
+
+    if (!a.bild_prompt) {
+      html += '<p class="dlm-muted dlm-small">' + esc(T.avatarBilderHint) + '</p>';
+    } else {
+      html += '<div class="dlm-avatar-slots">';
+      AVATAR_STILE.forEach(function (s) {
+        var stil = s[0], label = s[1];
+        var eintrag = bilder.filter(function (b) { return b && b.stil === stil; })[0];
+        var running = !!STATE.running['avatar-' + p.id + '-' + stil];
+        var chosen = a.gewaehlt === stil;
+        html += '<div class="dlm-avatar-slot' + (chosen ? ' dlm-avatar-slot-chosen' : '') + '">' +
+          (running
+            ? '<div class="dlm-avatar-slot-ph">' + esc(T.avatarBildLaeuft) + '</div>'
+            : (eintrag && eintrag.url
+              ? '<button type="button" class="dlm-avatar-slot-img" data-action="choose-avatar-bild" data-stil="' + esc(stil) + '"><img src="' + esc(eintrag.url) + '" alt=""></button>'
+              : '<div class="dlm-avatar-slot-ph">' + esc(label) + '</div>')) +
+          '<div class="dlm-avatar-slot-foot"><span class="dlm-small">' + esc(label) + (chosen ? ' · gewählt' : '') + '</span>' +
+          (!running ? '<button type="button" class="dlm-text-btn" data-action="gen-avatar-bild" data-stil="' + esc(stil) + '">' + esc(T.avatarBildErzeugen) + '</button>' : '') +
+          '</div></div>';
+      });
+      html += '</div><div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" data-action="gen-avatar-bild-all">' + esc(T.avatarBilderAlle) + '</button></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function renderZielgruppeTab(body, p) {
     if (p.analyse_status === 'laeuft') { renderAnalyseProgress(body, p); return; }
     if (p.analyse_status !== 'fertig' || !p.analyse) {
@@ -918,36 +1335,46 @@
       return;
     }
     var analyse = p.analyse;
-    var html = '<div class="dlm-toolbar">' +
+    var html = renderAvatarCard(p);
+    html += '<div class="dlm-toolbar">' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="refine-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRefine) + '</button>' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="redo-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRedo) + '</button>' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="export-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeExport) + '</button>' +
-      '</div><div class="dlm-accordion" id="dlm-analyse-acc">';
-    ANALYSE_CATS.forEach(function (c, i) {
-      var key = c[0], fallbackTitle = c[1];
-      var cat = analyse[key] || {};
-      // Der feste deutsche Titel hat Vorrang; der KI-Titel nur, wenn er kein roher Schluessel ist.
-      var katTitel = (cat.titel && String(cat.titel).replace(/_/g, ' ').toLowerCase() !== key.replace(/_/g, ' ') && String(cat.titel).length > 3) ? cat.titel : fallbackTitle;
-      var open = i < 2;
-      var num = String(i + 1); if (num.length < 2) num = '0' + num;
-      html += '<div class="dlm-acc-item' + (open ? ' dlm-acc-open' : '') + '" data-cat="' + key + '">' +
-        '<button type="button" class="dlm-acc-head" data-action="toggle-acc">' +
-        '<span><span class="dlm-acc-num">' + num + '</span>' + esc(katTitel) + '</span>' +
-        '<svg class="dlm-acc-caret" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>' +
-        '</button>' +
-        '<div class="dlm-acc-body">' +
-        '<div class="dlm-acc-view">' + mdMini(cat.inhalt) +
-        (arr(cat.punkte).length ? '<ul class="dlm-punkte">' + arr(cat.punkte).map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') +
-        '</div>' +
-        '<div class="dlm-acc-edit" hidden><textarea rows="8">' + esc(cat.inhalt || '') + '</textarea>' +
-        '<div class="dlm-acc-edit-actions"><button type="button" class="dlp-btn dlp-primary" data-action="save-cat" data-cat="' + key + '">' + esc(T.save) + '</button>' +
-        '<button type="button" class="dlp-btn dlp-ghost" data-action="cancel-cat">' + esc(T.cancel) + '</button></div></div>' +
-        '<div class="dlm-acc-actions">' +
-        '<button type="button" class="dlm-text-btn" data-action="edit-cat" data-cat="' + key + '">Bearbeiten</button>' +
-        '<button type="button" class="dlm-text-btn" data-action="copy-cat" data-cat="' + key + '">Kopieren</button>' +
-        '</div></div></div>';
+      '</div>';
+    html += '<nav class="dlm-jumpbar" id="dlm-jumpbar">' + ANALYSE_AREAS.map(function (area) {
+      return '<a class="dlm-chip dlm-jump-chip" href="#dlm-area-' + area.key + '">' + esc(area.label) + '</a>';
+    }).join('') + '</nav>';
+
+    var catIndex = 0;
+    ANALYSE_AREAS.forEach(function (area) {
+      html += '<h2 class="dlm-subtitle dlm-area-heading" id="dlm-area-' + area.key + '">' + esc(area.label) + '</h2>';
+      html += '<div class="dlm-accordion">';
+      area.cats.forEach(function (key) {
+        var fallbackTitle = (ANALYSE_CATS.filter(function (c) { return c[0] === key; })[0] || [key, key])[1];
+        var cat = analyse[key] || {};
+        var katTitel = (cat.titel && String(cat.titel).replace(/_/g, ' ').toLowerCase() !== key.replace(/_/g, ' ') && String(cat.titel).length > 3) ? cat.titel : fallbackTitle;
+        var open = catIndex < 2;
+        catIndex++;
+        var num = String(catIndex); if (num.length < 2) num = '0' + num;
+        html += '<div class="dlm-acc-item' + (open ? ' dlm-acc-open' : '') + '" data-cat="' + key + '">' +
+          '<button type="button" class="dlm-acc-head" data-action="toggle-acc">' +
+          '<span><span class="dlm-acc-num">' + num + '</span>' + esc(katTitel) + '</span>' +
+          '<svg class="dlm-acc-caret" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>' +
+          '</button>' +
+          '<div class="dlm-acc-body">' +
+          '<div class="dlm-acc-view">' + mdMini(cat.inhalt) +
+          (arr(cat.punkte).length ? '<ul class="dlm-punkte">' + arr(cat.punkte).map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') +
+          '</div>' +
+          '<div class="dlm-acc-edit" hidden><textarea rows="8">' + esc(cat.inhalt || '') + '</textarea>' +
+          '<div class="dlm-acc-edit-actions"><button type="button" class="dlp-btn dlp-primary" data-action="save-cat" data-cat="' + key + '">' + esc(T.save) + '</button>' +
+          '<button type="button" class="dlp-btn dlp-ghost" data-action="cancel-cat">' + esc(T.cancel) + '</button></div></div>' +
+          '<div class="dlm-acc-actions">' +
+          '<button type="button" class="dlm-text-btn" data-action="edit-cat" data-cat="' + key + '">Bearbeiten</button>' +
+          '<button type="button" class="dlm-text-btn" data-action="copy-cat" data-cat="' + key + '">Kopieren</button>' +
+          '</div></div></div>';
+      });
+      html += '</div>';
     });
-    html += '</div>';
     body.innerHTML = html;
   }
 
@@ -1122,6 +1549,36 @@
   }
 
   /* --- Winkel -------------------------------------------------------- */
+  function winkelHasOldFields(w) {
+    return !!(w.hook_beispiel || w.warum_wirkt || w.bezug || w.risiko || w.treiber || (Array.isArray(w.formate) && w.formate.length));
+  }
+  function winkelCardHtml(w, checked) {
+    var kurz = w.kurz || w.kernbotschaft || '';
+    var hasOld = winkelHasOldFields(w);
+    return '<div class="dlm-winkel-card' + (checked ? ' dlm-winkel-checked' : '') + '" data-winkel-id="' + esc(w.id) + '">' +
+      '<label class="dlm-winkel-check"><input type="checkbox" data-action="toggle-winkel" data-id="' + esc(w.id) + '"' + (checked ? ' checked' : '') + '>' +
+      '<span></span></label>' +
+      '<div class="dlm-winkel-main">' +
+      '<h4>' + esc(w.titel || 'Ohne Titel') + '</h4>' +
+      '<p class="dlm-muted">' + esc(kurz) + '</p>' +
+      '<div class="dlm-chips">' +
+      (w.typ ? '<span class="dlm-chip">' + esc(TYP_LABEL[w.typ] || w.typ) + '</span>' : '') +
+      (w.treiber ? '<span class="dlm-chip">' + esc(w.treiber) + '</span>' : '') +
+      (Array.isArray(w.formate) ? w.formate.map(function (f) { return '<span class="dlm-chip">' + esc(f) + '</span>'; }).join('') : '') +
+      '</div>' +
+      (hasOld ? (
+        '<button type="button" class="dlm-text-btn" data-action="toggle-winkel-detail" data-id="' + esc(w.id) + '">Details</button>' +
+        '<div class="dlm-winkel-detail" hidden>' +
+        (w.hook_beispiel ? '<p><strong>Hook-Beispiel:</strong> ' + esc(w.hook_beispiel) + '</p>' : '') +
+        (w.warum_wirkt ? '<p><strong>Warum wirkt:</strong> ' + esc(w.warum_wirkt) + '</p>' : '') +
+        (w.bezug ? '<p><strong>Bezug:</strong> ' + esc(w.bezug) + '</p>' : '') +
+        (w.risiko ? '<p><strong>Risiko:</strong> ' + esc(w.risiko) + '</p>' : '') +
+        '</div>'
+      ) : '') +
+      '</div></div>';
+  }
+
+  /* Winkel-Ansicht gruppiert nach 5 Awareness-Stufen (SPEC §11.5). */
   function renderWinkelTab(body, p) {
     var st = tabStatus(p);
     if (!st.zielgruppe) {
@@ -1141,55 +1598,46 @@
     var count = auswahl.length;
     var countCls = count < 5 ? 'dlm-count-bad' : (count > 10 ? 'dlm-count-bad' : 'dlm-count-ok');
     var countText = count > 10 ? T.winkelCountOver : (count < 5 ? T.winkelCountUnder : T.winkelCountOk);
-    var awarenessSet = {};
-    winkel.forEach(function (w) { if (w.awareness) awarenessSet[w.awareness] = true; });
+
+    var byAwareness = {};
+    winkel.forEach(function (w) {
+      var key = w.awareness || 'unbewusst';
+      (byAwareness[key] = byAwareness[key] || []).push(w);
+    });
 
     var html = '<div class="dlm-sticky-counter ' + countCls + '">' + count + ' von 5 bis 10 ' + esc(countText) + '</div>';
-    html += '<div class="dlm-filter-chips" id="dlm-winkel-filters">' +
-      '<button type="button" class="dlm-chip dlm-filter-chip' + (STATE.winkelFilter === 'alle' ? ' dlm-chip-active' : '') + '" data-filter="alle">Alle</button>' +
-      AWARENESS.filter(function (a) { return awarenessSet[a[0]]; }).map(function (a) {
-        return '<button type="button" class="dlm-chip dlm-filter-chip' + (STATE.winkelFilter === a[0] ? ' dlm-chip-active' : '') + '" data-filter="' + esc(a[0]) + '">' + esc(a[1]) + '</button>';
-      }).join('') + '</div>';
-    html += '<div class="dlm-winkel-list">';
-    winkel.forEach(function (w) {
-      if (STATE.winkelFilter !== 'alle' && w.awareness !== STATE.winkelFilter) return;
-      var checked = auswahl.indexOf(w.id) !== -1;
-      html += '<div class="dlm-winkel-card' + (checked ? ' dlm-winkel-checked' : '') + '" data-winkel-id="' + esc(w.id) + '">' +
-        '<label class="dlm-winkel-check"><input type="checkbox" data-action="toggle-winkel" data-id="' + esc(w.id) + '"' + (checked ? ' checked' : '') + '>' +
-        '<span></span></label>' +
-        '<div class="dlm-winkel-main">' +
-        '<h4>' + esc(w.titel || 'Ohne Titel') + '</h4>' +
-        '<p class="dlm-muted">' + esc(w.kernbotschaft || '') + '</p>' +
-        '<div class="dlm-chips">' +
-        (w.awareness ? '<span class="dlm-chip">' + esc(w.awareness) + '</span>' : '') +
-        (w.treiber ? '<span class="dlm-chip">' + esc(w.treiber) + '</span>' : '') +
-        (Array.isArray(w.formate) ? w.formate.map(function (f) { return '<span class="dlm-chip">' + esc(f) + '</span>'; }).join('') : '') +
-        '</div>' +
-        '<button type="button" class="dlm-text-btn" data-action="toggle-winkel-detail" data-id="' + esc(w.id) + '">Details</button>' +
-        '<div class="dlm-winkel-detail" hidden>' +
-        '<p><strong>Hook-Beispiel:</strong> ' + esc(w.hook_beispiel || 'Nicht vorhanden') + '</p>' +
-        '<p><strong>Warum wirkt:</strong> ' + esc(w.warum_wirkt || 'Nicht vorhanden') + '</p>' +
-        '<p><strong>Bezug:</strong> ' + esc(w.bezug || 'Nicht vorhanden') + '</p>' +
-        '<p><strong>Risiko:</strong> ' + esc(w.risiko || 'Nicht vorhanden') + '</p>' +
-        '</div></div></div>';
+    AWARENESS.forEach(function (a) {
+      var key = a[0], label = a[1];
+      var list = byAwareness[key] || [];
+      if (!list.length) return;
+      var stageRunning = !!STATE.running['winkel-' + p.id + '-' + key];
+      html += '<section class="dlm-awareness-group">' +
+        '<h3 class="dlm-awareness-heading">' + esc(label) + '</h3>' +
+        '<p class="dlm-muted dlm-awareness-info">' + esc(AWARENESS_INFO[key] || '') + '</p>' +
+        '<div class="dlm-winkel-list">' + list.map(function (w) { return winkelCardHtml(w, auswahl.indexOf(w.id) !== -1); }).join('') + '</div>' +
+        (stageRunning ? progressCardHtml('winkel') : '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost dlm-small-btn" data-action="run-winkel-more" data-id="' + esc(p.id) + '" data-awareness="' + esc(key) + '">' + esc(T.winkelMoreStufe) + '</button></div>') +
+        '</section>';
     });
-    html += '</div><div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" data-action="run-winkel-more" data-id="' + esc(p.id) + '">' + esc(T.winkelMore) + '</button></div>';
     body.innerHTML = html;
   }
 
-  function runWinkel(id, mehr) {
+  function runWinkel(id, mehr, awareness) {
+    var key = mehr ? ('winkel-' + id + '-' + awareness) : ('winkel-' + id);
+    STATE.running[key] = { pending: true };
     renderProjectRoute(parseHash());
-    var run = AI.run({ uid: STATE.profile.uid, task: 'winkel', project_id: id, mehr: !!mehr }, {
+    var payload = { uid: STATE.profile.uid, task: 'winkel', project_id: id, mehr: !!mehr };
+    if (mehr) payload.awareness = awareness;
+    var run = AI.run(payload, {
       onProgress: function (job) { updateProgressChars('winkel', job.chars || 0); }
     });
-    STATE.running['winkel-' + id] = { cancel: run.cancel };
+    STATE.running[key] = { cancel: run.cancel };
     startProgressRotation('winkel');
     run.promise.then(function () {
-      delete STATE.running['winkel-' + id];
+      delete STATE.running[key];
       stopProgressRotation('winkel');
       renderProjectRoute(parseHash());
     }).catch(function (err) {
-      delete STATE.running['winkel-' + id];
+      delete STATE.running[key];
       stopProgressRotation('winkel');
       toast(err && err.message ? err.message : T.genericError);
       renderProjectRoute(parseHash());
@@ -1409,6 +1857,9 @@
           if (chip && tpl) chip.textContent = 'Nach Vorlage: ' + (tpl.name || 'Vorlage');
         }).catch(function () {});
       }
+      if (openedAsset && openedAsset.typ === 'leadmagnet' && openedAsset.status === 'fertig' && openedAsset.content) {
+        wireFreebieDesigner(openedAsset, p, c);
+      }
     }
     ASSET_TYPES.forEach(function (t) {
       if (STATE.running['asset-' + c.id + '-' + t.typ]) startProgressRotation('asset-' + t.typ);
@@ -1577,7 +2028,6 @@
     var head = vorlageChip + '<div class="dlm-asset-panel-head">' +
       '<h3>' + esc(asset.titel || assetLabel(asset.typ)) + '</h3>' +
       '<div class="dlm-panel-actions">' +
-      (asset.typ === 'leadmagnet' && asset.status === 'fertig' ? '<button type="button" class="dlp-btn dlp-ghost" data-action="print-leadmagnet" data-id="' + esc(asset.id) + '">' + esc(T.assetPrint) + '</button>' : '') +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="copy-all-asset" data-id="' + esc(asset.id) + '">' + esc(T.assetCopyAll) + '</button>' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="export-asset" data-id="' + esc(asset.id) + '">' + esc(T.assetExport) + '</button>' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="regenerate-asset" data-id="' + esc(asset.id) + '" data-typ="' + esc(asset.typ) + '">' + esc(T.assetRegenerate) + '</button>' +
@@ -1600,7 +2050,7 @@
         case 'olg': body = renderOlg(asset); break;
         case 'email': body = renderEmail(asset); break;
         case 'vsl': body = renderVsl(asset); break;
-        case 'leadmagnet': body = renderLeadmagnet(asset); break;
+        case 'leadmagnet': body = renderLeadmagnet(asset, p, c); break;
         case 'funnel': body = renderFunnel(asset); break;
         default: body = '<div class="dlm-empty">Unbekannter Asset-Typ.</div>';
       }
@@ -1744,23 +2194,118 @@
       copyBtn(struktur.map(function (s) { return s.sprechtext; }).filter(Boolean).join('\n\n'));
   }
 
-  function renderLeadmagnet(asset) {
-    var c = asset.content || {};
+  /* --- Freebie-Designer (SPEC §11.7) ----------------------------------- */
+  function freebieCurrentDesign(asset) {
+    var stored = STATE.freebieDesign[asset.id];
+    if (stored) return stored;
+    var saved = (asset.content && asset.content.design) || {};
+    var themeKey = (saved.theme && window.FREEBIE && FREEBIE.THEMES[saved.theme]) ? saved.theme : 'klar';
+    var akzent = saved.akzent || (window.FREEBIE ? FREEBIE.THEMES[themeKey].akzent : '#1E5AFF');
+    var design = { theme: themeKey, akzent: akzent };
+    STATE.freebieDesign[asset.id] = design;
+    return design;
+  }
+  function freebieBuildHtml(asset, p, c) {
+    if (!window.FREEBIE) return '<!doctype html><html><body>Vorschau nicht verfügbar.</body></html>';
+    var design = freebieCurrentDesign(asset);
+    return FREEBIE.build(asset.content || {}, {
+      theme: design.theme,
+      akzent: design.akzent,
+      firma: (p && p.brief && p.brief.firma) || '',
+      link: (c && c.angebot && c.angebot.link) || ''
+    });
+  }
+  function leadmagnetPlainText(c) {
+    c = c || {};
     var kapitel = arr(c.kapitel).map(function (k) { return (k && typeof k === 'object') ? k : { ueberschrift: '', text: String(k || '') }; });
-    return '<div class="dlm-book">' +
-      '<div class="dlm-book-cover"><h2>' + esc(c.titel || 'Ohne Titel') + '</h2><p>' + inlineMd(c.untertitel || '') + '</p><p class="dlm-muted">' + inlineMd(c.versprechen || '') + '</p></div>' +
-      mdMini(c.einleitung) +
-      kapitel.map(function (k, i) {
-        k = k || {};
-        var punkte = Array.isArray(k.punkte) ? k.punkte : [];
-        return '<div class="dlm-chapter"><h4>' + (i + 1) + '. ' + esc(k.ueberschrift || '') + '</h4>' +
-          '<div>' + mdMini(k.text) + '</div>' +
-          (punkte.length ? '<ul class="dlm-punkte">' + punkte.map(function (pt) { return '<li>' + inlineMd(pt) + '</li>'; }).join('') + '</ul>' : '') +
-          '</div>';
-      }).join('') +
-      (Array.isArray(c.checkliste) && c.checkliste.length ? '<h4>Checkliste</h4><ul class="dlm-punkte">' + c.checkliste.map(function (pt) { return '<li>' + inlineMd(pt) + '</li>'; }).join('') + '</ul>' : '') +
-      (c.abschluss_cta ? '<div class="dlm-cta-box">' + mdMini(c.abschluss_cta) + '</div>' : '') +
-      (c.autor_box ? '<div class="dlm-muted">' + mdMini(c.autor_box) + '</div>' : '');
+    var lines = [c.titel || '', c.untertitel || '', c.versprechen || '', '', c.einleitung || ''];
+    kapitel.forEach(function (k, i) {
+      lines.push('', (i + 1) + '. ' + (k.ueberschrift || ''), k.text || '');
+      arr(k.punkte).forEach(function (pt) { lines.push('- ' + pt); });
+    });
+    if (arr(c.checkliste).length) { lines.push('', 'Checkliste:'); arr(c.checkliste).forEach(function (pt) { lines.push('- ' + pt); }); }
+    if (c.abschluss_cta) lines.push('', c.abschluss_cta);
+    if (c.autor_box) lines.push('', c.autor_box);
+    return lines.filter(function (l) { return l !== undefined && l !== null; }).join('\n');
+  }
+  function slugify(s) {
+    return String(s || 'leitfaden').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'leitfaden';
+  }
+  function renderLeadmagnet(asset, p, c) {
+    var design = freebieCurrentDesign(asset);
+    var themes = window.FREEBIE ? FREEBIE.THEMES : {};
+    var themeKeys = Object.keys(themes).length ? Object.keys(themes) : ['klar', 'dunkel', 'warm'];
+    var html = '<div class="dlm-freebie">' +
+      '<div class="dlm-freebie-toolbar">' +
+      '<div class="dlm-freebie-themes" id="dlm-freebie-themes">' + themeKeys.map(function (key) {
+        var th = themes[key] || { name: key, akzent: '#1E5AFF' };
+        return '<button type="button" class="dlm-freebie-theme-tile' + (design.theme === key ? ' dlm-freebie-theme-active' : '') + '" data-freebie-theme="' + esc(key) + '">' +
+          '<span class="dlm-freebie-swatch" style="background:' + esc(th.akzent) + '"></span><span>' + esc(th.name || key) + '</span></button>';
+      }).join('') + '</div>' +
+      '<label class="dlm-freebie-akzent-field"><span class="dlm-small">' + esc(T.freebieAkzent) + '</span>' +
+      '<input type="color" id="dlm-freebie-akzent" value="' + esc(design.akzent) + '"></label>' +
+      '<div class="dlm-freebie-actions">' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="freebie-print" data-id="' + esc(asset.id) + '">' + esc(T.freebiePrint) + '</button>' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="freebie-download" data-id="' + esc(asset.id) + '">' + esc(T.freebieDownload) + '</button>' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="freebie-copy-text" data-id="' + esc(asset.id) + '">' + esc(T.freebieCopyText) + '</button>' +
+      '</div></div>' +
+      '<iframe class="dlm-freebie-frame" id="dlm-freebie-frame-' + esc(asset.id) + '" data-freebie-frame="' + esc(asset.id) + '" sandbox="allow-same-origin" title="Leadmagnet-Vorschau"></iframe>' +
+      '</div>';
+    return html;
+  }
+  /* Setzt die iframe-Vorschau (srcdoc per JS, nicht als Attribut im HTML-String,
+     wegen Anfuehrungszeichen/Groesse) und verdrahtet Theme-Kacheln + Farbfeld. */
+  function wireFreebieDesigner(asset, p, c) {
+    var frame = $('dlm-freebie-frame-' + asset.id);
+    if (!frame) return;
+    frame.srcdoc = freebieBuildHtml(asset, p, c);
+    function persist() {
+      var design = freebieCurrentDesign(asset);
+      var content = Object.assign({}, asset.content, { design: { theme: design.theme, akzent: design.akzent } });
+      asset.content = content;
+      DB.patch('me_assets?id=eq.' + asset.id, { content: content }).catch(function () {});
+    }
+    function rerender() {
+      frame.srcdoc = freebieBuildHtml(asset, p, c);
+      qsa('#dlm-freebie-themes .dlm-freebie-theme-tile').forEach(function (btn) {
+        btn.classList.toggle('dlm-freebie-theme-active', btn.getAttribute('data-freebie-theme') === STATE.freebieDesign[asset.id].theme);
+      });
+      persist();
+    }
+    qsa('#dlm-freebie-themes [data-freebie-theme]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var key = btn.getAttribute('data-freebie-theme');
+        var akzent = (window.FREEBIE && FREEBIE.THEMES[key]) ? FREEBIE.THEMES[key].akzent : freebieCurrentDesign(asset).akzent;
+        STATE.freebieDesign[asset.id] = { theme: key, akzent: akzent };
+        var colorInput = $('dlm-freebie-akzent');
+        if (colorInput) colorInput.value = akzent;
+        rerender();
+      });
+    });
+    var colorInput = $('dlm-freebie-akzent');
+    if (colorInput) {
+      colorInput.addEventListener('input', function () {
+        var design = freebieCurrentDesign(asset);
+        STATE.freebieDesign[asset.id] = { theme: design.theme, akzent: colorInput.value };
+        rerender();
+      });
+    }
+  }
+  function freebiePrint(asset, p, c) {
+    var win = window.open('', '_blank');
+    if (!win) { toast('Bitte Pop-ups erlauben.'); return; }
+    var html = freebieBuildHtml(asset, p, c);
+    win.document.open(); win.document.write(html); win.document.close();
+    setTimeout(function () { try { win.focus(); win.print(); } catch (e) {} }, 300);
+  }
+  function freebieDownload(asset, p, c) {
+    var html = freebieBuildHtml(asset, p, c);
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = slugify((asset.content && asset.content.titel) || 'leitfaden') + '.html';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 400);
   }
 
   /* Nachfass ist ein Array von Objekten {zeitpunkt, kanal, ziel, text},
@@ -1812,47 +2357,6 @@
     return lines.join('\n');
   }
 
-  function printLeadmagnet(asset, project) {
-    var c = asset.content || {};
-    var win = window.open('', '_blank');
-    if (!win) { toast('Bitte Pop-ups erlauben.'); return; }
-    var firma = (project.brief && project.brief.firma) || '';
-    var kapitelHtml = (Array.isArray(c.kapitel) ? c.kapitel : []).map(function (k, i) {
-      k = k || {};
-      var punkte = Array.isArray(k.punkte) ? k.punkte : [];
-      return '<section class="chapter"><h2>' + (i + 1) + '. ' + esc(k.ueberschrift || '') + '</h2>' + mdMini(k.text) +
-        (punkte.length ? '<ul>' + punkte.map(function (pt) { return '<li>' + inlineMd(pt) + '</li>'; }).join('') + '</ul>' : '') + '</section>';
-    }).join('');
-    var checklisteHtml = (c.checkliste && c.checkliste.length)
-      ? '<section class="chapter"><h2>Checkliste</h2><ul class="checklist">' + c.checkliste.map(function (pt) { return '<li><span class="box"></span>' + inlineMd(pt) + '</li>'; }).join('') + '</ul></section>'
-      : '';
-    var html = '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>' + esc(c.titel || 'Leadmagnet') + '</title>' +
-      '<style>' +
-      '@page{size:A4;margin:22mm 18mm}' +
-      'body{font-family:Georgia,\'Times New Roman\',serif;color:#111;line-height:1.6;font-size:12.5pt}' +
-      '.cover{height:240mm;display:flex;flex-direction:column;justify-content:center;text-align:center;page-break-after:always}' +
-      '.cover h1{font-size:30pt;margin-bottom:10px}' +
-      '.cover p{font-size:14pt;color:#333}' +
-      '.chapter{page-break-before:always}' +
-      '.chapter:first-of-type{page-break-before:auto}' +
-      'h2{font-size:18pt;border-bottom:1px solid #ccc;padding-bottom:6px}' +
-      'ul.checklist{list-style:none;padding:0}' +
-      'ul.checklist li{margin:8px 0;padding-left:26px;position:relative}' +
-      'ul.checklist .box{position:absolute;left:0;top:2px;width:16px;height:16px;border:1.5px solid #333}' +
-      '.cta{margin-top:26px;padding:16px;border:1px solid #333;text-align:center}.autor{margin-top:22px;font-size:11pt;color:#333}' +
-      'footer{position:fixed;bottom:8mm;left:0;right:0;text-align:center;font-size:9pt;color:#666}' +
-      '</style></head><body>' +
-      '<div class="cover"><h1>' + esc(c.titel || '') + '</h1><p>' + inlineMd(c.untertitel || '') + '</p><p>' + inlineMd(c.versprechen || '') + '</p></div>' +
-      '<section class="chapter">' + mdMini(c.einleitung) + '</section>' +
-      kapitelHtml + checklisteHtml +
-      (c.abschluss_cta ? '<div class="cta">' + mdMini(c.abschluss_cta) + '</div>' : '') +
-      (c.autor_box ? '<div class="autor">' + mdMini(c.autor_box) + '</div>' : '') +
-      '<footer>' + esc(firma) + '</footer>' +
-      '</body></html>';
-    win.document.open(); win.document.write(html); win.document.close();
-    setTimeout(function () { try { win.focus(); win.print(); } catch (e) {} }, 300);
-  }
-
   /* --- Bild-Erzeugung -------------------------------------------------- */
   function generateImage(assetId, variant, format) {
     var slot = qs('[data-img-slot="' + assetId + ':' + variant + ':' + format + '"]');
@@ -1865,6 +2369,37 @@
       toast(err && err.message ? err.message : T.genericError);
       renderCampaignRoute(parseHash());
     });
+  }
+
+  /* --- Avatar-Bilder (SPEC §11.3) -------------------------------------- */
+  function generateAvatarBild(projectId, stil) {
+    STATE.running['avatar-' + projectId + '-' + stil] = { pending: true };
+    renderProjectRoute(parseHash());
+    IMG.stream({ uid: STATE.profile.uid, task: 'avatar', project_id: projectId, stil: stil }, { onDelta: function () {} })
+      .then(function () {
+        delete STATE.running['avatar-' + projectId + '-' + stil];
+        renderProjectRoute(parseHash());
+      }).catch(function (err) {
+        delete STATE.running['avatar-' + projectId + '-' + stil];
+        toast(err && err.message ? err.message : T.genericError);
+        renderProjectRoute(parseHash());
+      });
+  }
+  function generateAllAvatarBilder(projectId) {
+    AVATAR_STILE.forEach(function (s) { generateAvatarBild(projectId, s[0]); });
+  }
+  /* Setzt ein Bild als gewaehlt: Avatar-Objekt vorher frisch laden, dann komplett
+     zurueckschreiben (SPEC §11.3). */
+  function chooseAvatarBild(projectId, stil) {
+    DB.get('me_projects?select=id,avatar&id=eq.' + projectId).then(function (rows) {
+      var fresh = rows && rows[0];
+      if (!fresh) return;
+      var avatar = Object.assign({}, avatarOf(fresh), { gewaehlt: stil });
+      return DB.patch('me_projects?id=eq.' + projectId, { avatar: avatar }).then(function () {
+        if (STATE.project && STATE.project.id === projectId) STATE.project.avatar = avatar;
+        renderProjectRoute(parseHash());
+      });
+    }).catch(function () { toast(T.genericError); });
   }
 
   /* ------------------------------------------------------------------
@@ -2312,7 +2847,56 @@
       var runWinkelBtn = t.closest('[data-action="run-winkel"]');
       if (runWinkelBtn) { runWinkel(runWinkelBtn.getAttribute('data-id'), false); return; }
       var moreWinkelBtn = t.closest('[data-action="run-winkel-more"]');
-      if (moreWinkelBtn) { runWinkel(moreWinkelBtn.getAttribute('data-id'), true); return; }
+      if (moreWinkelBtn) { runWinkel(moreWinkelBtn.getAttribute('data-id'), true, moreWinkelBtn.getAttribute('data-awareness')); return; }
+
+      var goKampagnenBtn = t.closest('[data-action="go-kampagnen"]');
+      if (goKampagnenBtn) {
+        if (goKampagnenBtn.disabled) return;
+        location.hash = '#/p/' + goKampagnenBtn.getAttribute('data-id') + '/kampagnen';
+        return;
+      }
+
+      var restartInterviewBtn = t.closest('[data-action="restart-interview"]');
+      if (restartInterviewBtn) {
+        var riId = restartInterviewBtn.getAttribute('data-id');
+        confirmDialog(T.briefRestartInterviewConfirm, function () {
+          var interview = { frage: 1, uebersprungen: [], fertig: false };
+          DB.patch('me_projects?id=eq.' + riId, { interview: interview }).then(function () {
+            if (STATE.project && STATE.project.id === riId) STATE.project.interview = interview;
+            interviewSetIdx(STATE.project, 1);
+            renderProjectRoute(parseHash());
+          });
+        });
+        return;
+      }
+
+      var jumpInterviewBtn = t.closest('[data-action="jump-interview"]');
+      if (jumpInterviewBtn) {
+        var jiId = jumpInterviewBtn.getAttribute('data-id');
+        var feld = jumpInterviewBtn.getAttribute('data-feld');
+        var qIdx = INTERVIEW_QUESTIONS.map(function (q) { return q.feld; }).indexOf(feld);
+        var interview2 = Object.assign({ frage: 1, uebersprungen: [] }, STATE.project.interview, { fertig: false, frage: qIdx === -1 ? 1 : qIdx + 1 });
+        DB.patch('me_projects?id=eq.' + jiId, { interview: interview2 }).then(function () {
+          STATE.project.interview = interview2;
+          interviewSetIdx(STATE.project, interview2.frage);
+          renderProjectRoute(parseHash());
+        });
+        return;
+      }
+
+      var interviewStartAnalyseBtn = t.closest('[data-action="interview-start-analyse"]');
+      if (interviewStartAnalyseBtn) {
+        setTab('zielgruppe');
+        setTimeout(function () { runAnalyse(interviewStartAnalyseBtn.getAttribute('data-id')); }, 30);
+        return;
+      }
+
+      var genAvatarBtn = t.closest('[data-action="gen-avatar-bild"]');
+      if (genAvatarBtn) { generateAvatarBild(STATE.project.id, genAvatarBtn.getAttribute('data-stil')); return; }
+      var genAvatarAllBtn = t.closest('[data-action="gen-avatar-bild-all"]');
+      if (genAvatarAllBtn) { generateAllAvatarBilder(STATE.project.id); return; }
+      var chooseAvatarBtn = t.closest('[data-action="choose-avatar-bild"]');
+      if (chooseAvatarBtn) { chooseAvatarBild(STATE.project.id, chooseAvatarBtn.getAttribute('data-stil')); return; }
 
       var toggleDetail = t.closest('[data-action="toggle-winkel-detail"]');
       if (toggleDetail) {
@@ -2428,10 +3012,22 @@
         if (asset2) copyText(assetAllText(asset2));
         return;
       }
-      var printLm = t.closest('[data-action="print-leadmagnet"]');
-      if (printLm) {
-        var asset3 = arr(STATE.assets).filter(function (a) { return a.id === printLm.getAttribute('data-id'); })[0];
-        if (asset3) printLeadmagnet(asset3, STATE.project);
+      var freebiePrintBtn = t.closest('[data-action="freebie-print"]');
+      if (freebiePrintBtn) {
+        var fa1 = arr(STATE.assets).filter(function (a) { return a.id === freebiePrintBtn.getAttribute('data-id'); })[0];
+        if (fa1) freebiePrint(fa1, STATE.project, STATE.campaign);
+        return;
+      }
+      var freebieDownloadBtn = t.closest('[data-action="freebie-download"]');
+      if (freebieDownloadBtn) {
+        var fa2 = arr(STATE.assets).filter(function (a) { return a.id === freebieDownloadBtn.getAttribute('data-id'); })[0];
+        if (fa2) freebieDownload(fa2, STATE.project, STATE.campaign);
+        return;
+      }
+      var freebieCopyBtn = t.closest('[data-action="freebie-copy-text"]');
+      if (freebieCopyBtn) {
+        var fa3 = arr(STATE.assets).filter(function (a) { return a.id === freebieCopyBtn.getAttribute('data-id'); })[0];
+        if (fa3) copyText(leadmagnetPlainText(fa3.content));
         return;
       }
 
@@ -2498,6 +3094,7 @@
     checkVersion();
     setInterval(checkVersion, 10 * 60 * 1000);
     $('dlm-update-go') && $('dlm-update-go').addEventListener('click', function () { location.reload(); });
+    $('dlm-tabbar-hilfe') && $('dlm-tabbar-hilfe').addEventListener('click', function () { openIntro(); });
 
     window.DL_IDENTITY.sync(profile, 'marketing-engine', function (path, body, prefer) {
       return DB.post(path, body, prefer);

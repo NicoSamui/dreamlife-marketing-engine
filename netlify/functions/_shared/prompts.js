@@ -29,7 +29,7 @@ const MODULE_BY_TYPE = {
 const MAX_TOKENS = {
   analyse: 32000,
   verfeinern: 32000,
-  winkel: 24000,
+  winkel: 12000,
   asset: 28000,
   konsistenz: 14000,
   decode: 16000,
@@ -66,11 +66,21 @@ const KATEGORIE_TEILE = {
 // Schema mit allen 17 Kategorien plus "meta" (Standardfall, Rueckwaertskompatibel).
 // Mit "kategorien" nur die genannten Kategorien, "meta" nur wenn "zusammenfassung"
 // darunter ist (Teil 4 der Hintergrund-Anfragen, siehe KATEGORIE_TEILE).
+// Text des zusaetzlichen Pflichtfelds "avatar_person" in der Kategorie "basisprofil"
+// (siehe SPEC §11.2): dieselbe Beschreibung wird im Text-Schema und weiter unten sinngemaess
+// im echten JSON-Schema (analyseJsonSchema) verwendet.
+const AVATAR_PERSON_TEXT = `{ "name": "string (Vorname plus Nachname, typisch fuer die Zielgruppe)", "alter": 34, "beruf": "string", "kurzbeschreibung": "string (2 Saetze)", "bild_prompt": "string (englisch, 60 bis 100 Woerter: Aussehen, Kleidung, Umgebung, Stimmung, neutraler Hintergrund, Portraet, keine Marken, kein Text)" }`;
+
 function buildAnalyseSchema(kategorien) {
   const teil = Array.isArray(kategorien) && kategorien.length ? kategorien : null;
   const keys = teil || KATEGORIEN_ALL;
   const withMeta = !teil || keys.indexOf("zusammenfassung") !== -1;
-  const lines = keys.map((k) => `  "${k}": { "titel": "string", "inhalt": "string (ausfuehrliches Markdown)", "punkte": ["string", "..."] }`);
+  const lines = keys.map((k) => {
+    if (k === "basisprofil") {
+      return `  "${k}": { "titel": "string", "inhalt": "string (ausfuehrliches Markdown)", "punkte": ["string", "..."], "avatar_person": ${AVATAR_PERSON_TEXT} }`;
+    }
+    return `  "${k}": { "titel": "string", "inhalt": "string (ausfuehrliches Markdown)", "punkte": ["string", "..."] }`;
+  });
   if (withMeta) lines.push(`  "meta": { "erzeugt_am": "ISO-Datum als string", "modell": "string", "version": "string" }`);
   let out = "Gib GENAU dieses JSON-Objekt zurueck, keine zusaetzlichen Schluessel, keine fehlenden:\n{\n" + lines.join(",\n") + "\n}\n";
   if (teil) {
@@ -79,32 +89,33 @@ function buildAnalyseSchema(kategorien) {
     out += "Reihenfolge der Kategorien genau wie oben. \"punkte\" ist optional, \"titel\" und \"inhalt\" sind Pflicht.\n";
   }
   out += "Jede Kategorie braucht einen ausfuehrlichen, konkreten \"inhalt\"-Text (mehrere Absaetze), keine Stichworte statt Text.";
+  if (keys.indexOf("basisprofil") !== -1) {
+    out += " Die Kategorie \"basisprofil\" braucht zusaetzlich das Pflichtfeld \"avatar_person\" mit name, alter (Zahl), beruf, kurzbeschreibung und bild_prompt, alle Pflicht.";
+  }
   return out;
 }
 
 const ANALYSE_SCHEMA = buildAnalyseSchema();
 
+// Kurzform der Winkel (SPEC §11.5): genau 25 Winkel, 5 je Awareness-Stufe, nur noch id, titel,
+// kurz (ein Satz), awareness, typ. Keine weiteren Felder mehr in der Erstliste.
 const WINKEL_SCHEMA = `Gib GENAU dieses JSON-Objekt zurueck:
 {
   "winkel": [
     {
       "id": "w1",
-      "titel": "string",
-      "kernbotschaft": "string",
-      "bezug": "string (welcher Schmerz oder Wunsch aus der Analyse aufgegriffen wird)",
+      "titel": "string (maximal 6 Woerter)",
+      "kurz": "string (genau EIN Satz, maximal 30 Woerter, erklaert den Winkel aus Sicht der Zielgruppe)",
       "awareness": "unbewusst|problembewusst|loesungsbewusst|produktbewusst|meistbewusst",
-      "treiber": "string (Bezug zu Life Force 8)",
-      "hook_beispiel": "string",
-      "warum_wirkt": "string",
-      "formate": ["creative", "reel", "caption", "olg", "email", "vsl", "leadmagnet", "funnel"],
-      "risiko": "string"
+      "typ": "Mechanismus|Feind|Kontrast|Story|Zahlen|Zeit|Identität|Neue Chance|Warnung|Frage|Geheimnis|Status"
     }
   ]
 }
-Ohne "mehr": erzeuge 16 bis 20 unterschiedliche Winkel mit IDs w1, w2, w3 und so weiter, ueber alle
-Awareness-Stufen verteilt (Mechanismus-Winkel, Feind-Winkel, Kontrast-Winkel, Story-Winkel, Zahlen-Winkel,
-Zeit-Winkel, Identitaets-Winkel). Mit "mehr": erzeuge genau 8 neue Winkel, keine Wiederholung der
-bestehenden Titel, IDs fortlaufend ab der im Nutzer-Kontext genannten Nummer.`;
+Keine weiteren Felder je Winkel (kein hook_beispiel, kein warum_wirkt, kein risiko, keine formate).
+Ohne "mehr": erzeuge genau 25 Winkel mit IDs w1 bis w25, genau 5 je Awareness-Stufe, in dieser
+Reihenfolge: unbewusst, problembewusst, loesungsbewusst, produktbewusst, meistbewusst. Mit "mehr":
+erzeuge genau 5 neue Winkel NUR fuer die im Nutzer-Kontext genannte Awareness-Stufe, keine
+Wiederholung der bestehenden Titel, IDs fortlaufend ab der im Nutzer-Kontext genannten Nummer.`;
 
 const CREATIVE_SCHEMA = `Gib GENAU dieses JSON-Objekt zurueck:
 {
@@ -350,11 +361,13 @@ function buildUserContext(task, ctx) {
 
   if (task === "winkel") {
     if (project.analyse) userCtx.analyse = project.analyse;
-    if (ctx.mehr && Array.isArray(project.winkel) && project.winkel.length) {
-      userCtx.bestehende_winkel_titel = project.winkel.map((w) => w && w.titel).filter(Boolean);
+    if (ctx.mehr) {
+      const bestehende = Array.isArray(project.winkel) ? project.winkel : [];
+      userCtx.bestehende_winkel_titel = bestehende.map((w) => w && w.titel).filter(Boolean);
+      userCtx.awareness_stufe = ctx.awareness;
       userCtx.hinweis =
-        "Erzeuge 8 neue Winkel, keine Wiederholung der bestehenden, IDs fortlaufend ab w" +
-        (project.winkel.length + 1) + ".";
+        "Erzeuge genau 5 neue Winkel NUR fuer die Awareness-Stufe " + ctx.awareness +
+        ", keine Wiederholung der bestehenden Titel, IDs fortlaufend ab w" + (bestehende.length + 1) + ".";
     }
     return userCtx;
   }
@@ -362,6 +375,9 @@ function buildUserContext(task, ctx) {
   if (task === "asset") {
     if (project.analyse) userCtx.analyse = project.analyse;
     if (Array.isArray(ctx.winkel) && ctx.winkel.length) userCtx.winkel = ctx.winkel;
+    // Die neuen Kurz-Winkel (SPEC §11.5) sind bewusst nur Skizzen (id, titel, kurz, awareness,
+    // typ), alte Winkel-Objekte mit kernbotschaft usw. werden unveraendert durchgereicht.
+    userCtx.winkel_hinweis = "Die Winkel sind bewusst kurze Skizzen. Baue sie selbst aus: Hook, Mechanismus, Beweisidee, konkrete Szene.";
     if (ctx.winkel_id) {
       userCtx.winkel_fokus = "Nur der Winkel mit id " + ctx.winkel_id + " steht im Fokus dieses Assets.";
     } else {
@@ -408,20 +424,25 @@ const S = {
   obj: (props, required) => ({ type: "object", properties: props, required: required || Object.keys(props), additionalProperties: true }),
 };
 const KAT = S.obj({ titel: S.str, inhalt: S.str, punkte: S.strArr }, ["titel", "inhalt"]);
+// Zusatzfeld avatar_person, nur in der Kategorie "basisprofil" (SPEC §11.2), Pflicht.
+const AVATAR_PERSON = S.obj({
+  name: S.str, alter: { type: "integer" }, beruf: S.str, kurzbeschreibung: S.str, bild_prompt: S.str,
+}, ["name", "alter", "beruf", "kurzbeschreibung", "bild_prompt"]);
+const KAT_BASISPROFIL = S.obj({ titel: S.str, inhalt: S.str, punkte: S.strArr, avatar_person: AVATAR_PERSON }, ["titel", "inhalt", "avatar_person"]);
 function analyseJsonSchema(kategorien) {
   const keys = Array.isArray(kategorien) && kategorien.length ? kategorien : KATEGORIEN_ALL;
   const props = {};
-  keys.forEach((k) => { props[k] = KAT; });
+  keys.forEach((k) => { props[k] = k === "basisprofil" ? KAT_BASISPROFIL : KAT; });
   props.meta = S.obj({ erzeugt_am: S.str, modell: S.str, version: S.str }, []);
   return { type: "object", properties: props, required: keys, additionalProperties: false };
 }
 const JSON_SCHEMAS = {
   winkel: S.obj({
     winkel: { type: "array", items: S.obj({
-      id: S.str, titel: S.str, kernbotschaft: S.str, bezug: S.str,
+      id: S.str, titel: S.str, kurz: S.str,
       awareness: { type: "string", enum: ["unbewusst", "problembewusst", "loesungsbewusst", "produktbewusst", "meistbewusst"] },
-      treiber: S.str, hook_beispiel: S.str, warum_wirkt: S.str, formate: S.strArr, risiko: S.str,
-    }) },
+      typ: { type: "string", enum: ["Mechanismus", "Feind", "Kontrast", "Story", "Zahlen", "Zeit", "Identität", "Neue Chance", "Warnung", "Frage", "Geheimnis", "Status"] },
+    }, ["id", "titel", "kurz", "awareness", "typ"]) },
   }),
   creative: S.obj({
     varianten: { type: "array", items: S.obj({

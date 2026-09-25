@@ -82,9 +82,25 @@ async function saveResult(task, parsed, ctx) {
   const nowIso = new Date().toISOString();
 
   if (realTask === 'analyse') {
-    await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, {
-      analyse: parsed, analyse_status: 'fertig', updated_at: nowIso,
-    });
+    const patchBody = { analyse: parsed, analyse_status: 'fertig', updated_at: nowIso };
+    // SPEC §11.2: avatar_person aus basisprofil in me_projects.avatar mergen (bestehende
+    // bilder/gewaehlt bleiben erhalten). Fehlt avatar_person, wird avatar gar nicht angefasst.
+    const avatarPerson = parsed && parsed.basisprofil && typeof parsed.basisprofil === 'object'
+      ? parsed.basisprofil.avatar_person : null;
+    if (avatarPerson && typeof avatarPerson === 'object') {
+      const bestehend = (ctx.project && ctx.project.avatar && typeof ctx.project.avatar === 'object') ? ctx.project.avatar : {};
+      const avatar = Object.assign({}, bestehend, {
+        name: avatarPerson.name,
+        alter: avatarPerson.alter,
+        beruf: avatarPerson.beruf,
+        kurzbeschreibung: avatarPerson.kurzbeschreibung,
+        bild_prompt: avatarPerson.bild_prompt,
+      });
+      avatar.bilder = Array.isArray(bestehend.bilder) ? bestehend.bilder : [];
+      avatar.gewaehlt = bestehend.gewaehlt || null;
+      patchBody.avatar = avatar;
+    }
+    await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, patchBody);
     return { ok: true };
   }
 
@@ -287,7 +303,7 @@ export default async (req) => {
   const reportChars = makeCharsReporter(jobId);
 
   let project = null, campaign = null, asset = null;
-  const ctx = { hinweis: body.hinweis, mehr: !!body.mehr, winkel_id: body.winkel_id, anzahl: body.anzahl };
+  const ctx = { hinweis: body.hinweis, mehr: !!body.mehr, winkel_id: body.winkel_id, anzahl: body.anzahl, awareness: body.awareness };
 
   let template = null;
 
@@ -374,6 +390,7 @@ export default async (req) => {
       const promptData = prompts.buildPrompt(task, {
         project, campaign, asset, typ, winkel: ctx.winkel, winkel_id: ctx.winkel_id,
         profile, hinweis: ctx.hinweis, mehr: ctx.mehr, anzahl: ctx.anzahl, assets: assetsCtx, template,
+        awareness: ctx.awareness,
       });
       const fullText = await streamText({
         key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
