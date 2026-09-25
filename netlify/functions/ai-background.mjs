@@ -182,6 +182,25 @@ async function runAnalyseParts(job, ctx, key, reportChars) {
       if (part && part[k]) { merged[k] = part[k]; break; }
     }
   });
+
+  // Nachlauf: fehlende Kategorien (z. B. durch abgeschnittene Antworten) in EINEM weiteren
+  // Aufruf nachholen. Bleibt danach noch etwas leer, wird die Kategorie als Hinweis gefuellt,
+  // damit die Analyse nie mit Luecken abgespeichert wird, ohne dass der Teilnehmer es sieht.
+  const fehlend = prompts.KATEGORIEN_ALL.filter((k) => !merged[k]);
+  if (fehlend.length) {
+    try {
+      const pd = prompts.buildPrompt('analyse', { project: ctx.project, hinweis: ctx.hinweis, profile: ctx.profile, kategorien: fehlend });
+      const txt = await streamText({ key, model: MODEL, system: pd.system, user: pd.user, max_tokens: pd.max_tokens,
+        onDelta: (d) => { charsByTeil[nummern[0]] += d.length; reportChars(totalChars()); } });
+      const nach = textHelpers.deepStripDashes(textHelpers.extractJSON(txt));
+      fehlend.forEach((k) => { if (nach && nach[k]) merged[k] = nach[k]; });
+    } catch (e) {
+      console.warn('Analyse-Nachlauf fehlgeschlagen', e && e.message);
+    }
+    prompts.KATEGORIEN_ALL.filter((k) => !merged[k]).forEach((k) => {
+      merged[k] = { titel: k, inhalt: 'Diese Kategorie konnte nicht erzeugt werden. Bitte "Verfeinern mit Hinweis" nutzen und diese Kategorie nennen.', punkte: [] };
+    });
+  }
   merged.meta = { erzeugt_am: new Date().toISOString(), modell: MODEL, version: '1.0' };
   return merged;
 }

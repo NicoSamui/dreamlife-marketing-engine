@@ -24,12 +24,14 @@ const MODULE_BY_TYPE = {
   funnel: "funnel",
 };
 
+// Grosszuegige Budgets: Opus 5.x denkt vor der Antwort (adaptives Thinking), diese Tokens
+// zaehlen mit in max_tokens. Zu kleine Budgets brechen die JSON-Ausgabe mitten im Tool-Aufruf ab.
 const MAX_TOKENS = {
-  analyse: 14000,
-  verfeinern: 14000,
-  winkel: 8000,
-  asset: 10000,
-  konsistenz: 4000,
+  analyse: 32000,
+  verfeinern: 32000,
+  winkel: 24000,
+  asset: 28000,
+  konsistenz: 14000,
 };
 
 const TEMPERATURE = {
@@ -373,7 +375,7 @@ function buildPrompt(task, ctx) {
 
   // Ein Teil der Analyse (parallele Hintergrund-Anfrage) braucht weniger Tokens als die
   // ganze Analyse, siehe ai-background.mjs.
-  const max_tokens = istAnalyseTeil ? 7000 : (MAX_TOKENS[task] || 8000);
+  const max_tokens = istAnalyseTeil ? 20000 : (MAX_TOKENS[task] || 20000);
   const temperature = Object.prototype.hasOwnProperty.call(TEMPERATURE, task) ? TEMPERATURE[task] : DEFAULT_TEMPERATURE;
 
   return { system, user, max_tokens, temperature };
