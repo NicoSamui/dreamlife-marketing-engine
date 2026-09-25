@@ -67,7 +67,12 @@ async function streamText(opts) {
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  let fullText = "";
+  let fullText = "";          // alle Zeichen (Text + Tool-JSON), nur fuer Fortschritt/Fallback
+  const toolBlocks = [];      // je Tool-Aufruf ein JSON-String (das Modell darf mehrfach aufrufen)
+  let textOnly = "";          // reine Textbloecke (Fallback, falls kein Tool-Aufruf kam)
+  let current = null;         // aktueller Block: { type, json, text }
+  const blockTypes = [];
+  let stopReason = "";
 
   for (;;) {
     const { done, value } = await reader.read();
@@ -83,19 +88,66 @@ async function streamText(opts) {
       if (!pl || pl === "[DONE]") continue;
       try {
         const ev = JSON.parse(pl);
+        if (ev.type === "content_block_start") {
+          const bt = (ev.content_block && ev.content_block.type) || "?";
+          blockTypes.push(bt);
+          current = { type: bt, json: "", text: "" };
+          continue;
+        }
+        if (ev.type === "content_block_stop") {
+          if (current && current.type === "tool_use") toolBlocks.push(current.json);
+          if (current && current.type === "text") textOnly += current.text;
+          current = null;
+          continue;
+        }
+        if (ev.type === "message_delta" && ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
+        if (ev.type === "error" && ev.error) throw new Error("KI-Fehler: " + (ev.error.message || ev.error.type));
         const d = ev.type === "content_block_delta" && ev.delta ? ev.delta : null;
-        const piece = d ? (typeof d.partial_json === "string" ? d.partial_json : (typeof d.text === "string" ? d.text : null)) : null;
+        if (!d) continue;
+        let piece = null;
+        if (typeof d.partial_json === "string") { piece = d.partial_json; if (current) current.json += piece; }
+        else if (typeof d.text === "string") { piece = d.text; if (current) current.text += piece; }
         if (piece !== null) {
           fullText += piece;
           if (opts.onDelta) {
             try { opts.onDelta(piece, fullText.length); } catch (e) { /* Fortschritt ist nie ein Abbruchgrund */ }
           }
         }
-      } catch (e) { /* Zeile ueberspringen */ }
+      } catch (e) {
+        if (e && /^KI-Fehler/.test(e.message)) throw e;
+        /* sonst Zeile ueberspringen */
+      }
     }
   }
-  if (!fullText.trim()) throw new Error("Die KI hat keinen Text geliefert.");
-  return fullText;
+  if (current && current.type === "tool_use") toolBlocks.push(current.json);
+  if (current && current.type === "text") textOnly += current.text;
+
+  // Tool-Aufrufe: JSON je Block parsen und zusammenfuehren (Objekte: Schluessel vereinen,
+  // gleichnamige Arrays: anhaengen). So bleibt auch ein Modell korrekt, das je Kategorie
+  // einen eigenen Tool-Aufruf macht.
+  const parsedBlocks = [];
+  for (const j of toolBlocks) {
+    const s = String(j || "").trim();
+    if (!s) continue;
+    try { parsedBlocks.push(JSON.parse(s)); } catch (e) { /* kaputten Block ueberspringen */ }
+  }
+  if (parsedBlocks.length) {
+    const merged = parsedBlocks.length === 1 ? parsedBlocks[0] : parsedBlocks.reduce(mergeDeep, {});
+    return JSON.stringify(merged);
+  }
+  if (textOnly.trim()) return textOnly;
+  if (fullText.trim()) return fullText;
+  throw new Error("Die KI hat keinen Text geliefert (Bloecke: " + (blockTypes.join(",") || "keine") + ", Ende: " + (stopReason || "unbekannt") + ").");
 }
 
-module.exports = { streamText };
+function mergeDeep(a, b) {
+  if (Array.isArray(a) && Array.isArray(b)) return a.concat(b);
+  if (a && b && typeof a === "object" && typeof b === "object" && !Array.isArray(a) && !Array.isArray(b)) {
+    const out = Object.assign({}, a);
+    for (const k of Object.keys(b)) out[k] = k in out ? mergeDeep(out[k], b[k]) : b[k];
+    return out;
+  }
+  return b === undefined ? a : b;
+}
+
+module.exports = { streamText, mergeDeep };
