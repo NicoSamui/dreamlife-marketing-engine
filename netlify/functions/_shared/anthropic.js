@@ -19,13 +19,26 @@ async function callOnce(key, payload) {
 
 // { key, model, system, user, max_tokens, onDelta(deltaText, gesamtLaenge) } -> Promise<string>
 async function streamText(opts) {
-  const payload = JSON.stringify({
+  // JSON-Modus (Standard): Die Antwort wird als Tool-Eingabe erzwungen. Damit liefert die API
+  // garantiert gueltiges JSON (keine kaputten Anfuehrungszeichen oder Zeilenumbrueche in
+  // Strings), auch bei sehr langen Ausgaben. Der Text kommt dann als input_json_delta.
+  const json = opts.json !== false;
+  const body = {
     model: opts.model,
     max_tokens: opts.max_tokens,
     stream: true,
     system: opts.system,
     messages: [{ role: "user", content: opts.user }],
-  });
+  };
+  if (json) {
+    body.tools = [{
+      name: "ergebnis",
+      description: "Liefert das fertige Ergebnis als JSON-Objekt genau nach dem im System-Prompt beschriebenen Schema.",
+      input_schema: { type: "object", additionalProperties: true },
+    }];
+    body.tool_choice = { type: "tool", name: "ergebnis" };
+  }
+  const payload = JSON.stringify(body);
 
   let upstream = null;
   let lastMsg = "KI-Fehler.";
@@ -66,10 +79,12 @@ async function streamText(opts) {
       if (!pl || pl === "[DONE]") continue;
       try {
         const ev = JSON.parse(pl);
-        if (ev.type === "content_block_delta" && ev.delta && typeof ev.delta.text === "string") {
-          fullText += ev.delta.text;
+        const d = ev.type === "content_block_delta" && ev.delta ? ev.delta : null;
+        const piece = d ? (typeof d.partial_json === "string" ? d.partial_json : (typeof d.text === "string" ? d.text : null)) : null;
+        if (piece !== null) {
+          fullText += piece;
           if (opts.onDelta) {
-            try { opts.onDelta(ev.delta.text, fullText.length); } catch (e) { /* Fortschritt ist nie ein Abbruchgrund */ }
+            try { opts.onDelta(piece, fullText.length); } catch (e) { /* Fortschritt ist nie ein Abbruchgrund */ }
           }
         }
       } catch (e) { /* Zeile ueberspringen */ }
