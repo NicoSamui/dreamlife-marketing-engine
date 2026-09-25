@@ -459,7 +459,7 @@
 
     var actionsEl = qs('.dlm-dialog-actions', wrap);
     function close() { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); document.removeEventListener('keydown', onKey); }
-    (opts.actions || []).forEach(function (a) {
+    arr(opts.actions).forEach(function (a) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'dlp-btn ' + (a.primary ? 'dlp-primary' : 'dlp-ghost');
@@ -631,7 +631,7 @@
   function statusChips(p) {
     var an = p.analyse_status === 'fertig' ? 'Analyse fertig' : (p.analyse_status === 'laeuft' ? 'Analyse laeuft' : 'Analyse offen');
     var anCls = p.analyse_status === 'fertig' ? 'dlm-chip-ok' : (p.analyse_status === 'laeuft' ? 'dlm-chip-warn' : '');
-    var wn = (p.winkel_auswahl || []).length;
+    var wn = arr(p.winkel_auswahl).length;
     return '<span class="dlm-chip ' + anCls + '">' + esc(an) + '</span>' +
       '<span class="dlm-chip">Winkel ' + wn + '/10</span>';
   }
@@ -668,7 +668,7 @@
       STATE.projects.forEach(function (p) {
         DB.get('me_campaigns?select=id&project_id=eq.' + p.id).then(function (rows) {
           var el = qs('[data-camp-count="' + p.id + '"]', grid);
-          if (el) el.textContent = String((rows || []).length);
+          if (el) el.textContent = String(arr(rows).length);
         }).catch(function () {});
       });
     }).catch(function () {
@@ -700,7 +700,7 @@
   }
 
   function openProjectMenu(id, anchorEl) {
-    var p = (STATE.projects || []).filter(function (x) { return x.id === id; })[0];
+    var p = arr(STATE.projects).filter(function (x) { return x.id === id; })[0];
     dialog({
       title: p ? p.name : 'Projekt',
       body: '<label class="dlm-field"><span>' + esc(T.rename) + '</span><input type="text" id="dlm-rename-input" value="' + esc(p ? p.name : '') + '"></label>',
@@ -729,7 +729,7 @@
      13) Ansicht: Projekt (Stepper: Brief / Zielgruppe / Winkel / Kampagnen)
      ------------------------------------------------------------------ */
   function tabStatus(project) {
-    var winkelCount = (project.winkel_auswahl || []).length;
+    var winkelCount = arr(project.winkel_auswahl).length;
     return {
       brief: true,
       zielgruppe: project.analyse_status === 'fertig',
@@ -878,7 +878,7 @@
         '</button>' +
         '<div class="dlm-acc-body">' +
         '<div class="dlm-acc-view">' + mdMini(cat.inhalt) +
-        (cat.punkte && cat.punkte.length ? '<ul class="dlm-punkte">' + cat.punkte.map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') +
+        (arr(cat.punkte).length ? '<ul class="dlm-punkte">' + arr(cat.punkte).map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') +
         '</div>' +
         '<div class="dlm-acc-edit" hidden><textarea rows="8">' + esc(cat.inhalt || '') + '</textarea>' +
         '<div class="dlm-acc-edit-actions"><button type="button" class="dlp-btn dlp-primary" data-action="save-cat" data-cat="' + key + '">' + esc(T.save) + '</button>' +
@@ -991,7 +991,7 @@
   // die Fortschrittskarte weiter aktualisiert wird (SPEC §F).
   function resumeRunningJobs(projectId, campaignId, rerender) {
     DB.get('me_jobs?select=*&status=in.(wartet,laeuft)&order=created_at.desc&limit=20').then(function (jobs) {
-      (jobs || []).forEach(function (job) {
+      arr(jobs).forEach(function (job) {
         if (job.project_id !== projectId) return;
         if (campaignId && job.campaign_id && job.campaign_id !== campaignId) return;
         var key = runningKeyFromJob(job);
@@ -1116,7 +1116,7 @@
 
   function toggleWinkelAuswahl(projectId, winkelId, checked) {
     var p = STATE.project;
-    var auswahl = (p.winkel_auswahl || []).slice();
+    var auswahl = arr(p.winkel_auswahl).slice();
     var idx = auswahl.indexOf(winkelId);
     if (checked && idx === -1) {
       if (auswahl.length >= 10) { toast(T.winkelCountOver); renderProjectRoute(parseHash()); return; }
@@ -1163,7 +1163,7 @@
           var el = qs('[data-camp-assets="' + c.id + '"]', list);
           if (!el) return;
           var counts = {};
-          (assetRows || []).forEach(function (a) { counts[a.typ] = (counts[a.typ] || 0) + 1; });
+          arr(assetRows).forEach(function (a) { counts[a.typ] = (counts[a.typ] || 0) + 1; });
           el.innerHTML = ASSET_TYPES.map(function (t) {
             var n = counts[t.typ] || 0;
             return '<span class="dlm-asset-icon' + (n ? ' dlm-asset-icon-on' : '') + '" title="' + esc(t.label) + '">' + n + '</span>';
@@ -1178,7 +1178,7 @@
     var p = STATE.project;
     var auswahl = p.winkel_auswahl || [];
     var winkelMap = {};
-    (p.winkel || []).forEach(function (w) { winkelMap[w.id] = w; });
+    arr(p.winkel).forEach(function (w) { winkelMap[w.id] = w; });
     var body = document.createElement('div');
     body.innerHTML =
       '<label class="dlm-field"><span>' + esc(T.kampagneName) + '</span><input type="text" id="dlm-camp-name" maxlength="120"></label>' +
@@ -1250,12 +1250,12 @@
   }
 
   function winkelById(p, id) {
-    return (p.winkel || []).filter(function (w) { return w.id === id; })[0];
+    return arr(p.winkel).filter(function (w) { return w.id === id; })[0];
   }
 
   function renderCampaignBody(r, p, c, assets) {
     var app = $('app');
-    var winkelChips = (c.winkel_ids || []).map(function (wid) {
+    var winkelChips = arr(c.winkel_ids).map(function (wid) {
       var w = winkelById(p, wid);
       return '<span class="dlm-chip">' + esc(w ? w.titel : wid) + '</span>';
     }).join('');
@@ -1353,7 +1353,7 @@
     var html = '<div class="dlm-konsistenz-card">' +
       '<div class="dlm-score-ring" style="--val:' + score + '"><span>' + score + '</span></div>' +
       '<div class="dlm-konsistenz-body"><p>' + esc(k.fazit || 'Keine Zusammenfassung.') + '</p>' +
-      '<ul class="dlm-befunde">' + (k.befunde || []).map(function (b) {
+      '<ul class="dlm-befunde">' + arr(k.befunde).map(function (b) {
         return '<li><span class="dlm-chip ' + (sevCls[b.schwere] || '') + '">' + esc(b.schwere || '') + '</span> ' +
           '<strong>' + esc(assetLabel(b.asset_typ)) + ':</strong> ' + esc(b.problem || '') + ' ' +
           (b.vorschlag ? '<em>Vorschlag: ' + esc(b.vorschlag) + '</em>' : '') + '</li>';
@@ -1383,7 +1383,7 @@
   /* --- Asset erzeugen ------------------------------------------------ */
   function openGenerateDialog(typ) {
     var c = STATE.campaign, p = STATE.project;
-    var winkelOpts = (c.winkel_ids || []).map(function (wid) {
+    var winkelOpts = arr(c.winkel_ids).map(function (wid) {
       var w = winkelById(p, wid);
       return '<option value="' + esc(wid) + '">' + esc(w ? w.titel : wid) + '</option>';
     }).join('');
@@ -1494,6 +1494,7 @@
   }
 
   /* Schema-Angleichung (Befund 3): hashtags koennen Array ODER String sein. */
+  function arr(v) { if (Array.isArray(v)) return v; if (v === null || v === undefined || v === '') return []; return [v]; }
   function hashtagsArr(h) {
     if (Array.isArray(h)) return h;
     return String(h || '').split(/\s+/).filter(Boolean);
@@ -1501,7 +1502,7 @@
 
   function renderCreative(asset) {
     var content = asset.content || {};
-    var varianten = content.varianten || [];
+    var varianten = arr(content.varianten);
     if (!varianten.length) return '<div class="dlm-empty">Nicht vorhanden.</div>';
     return varianten.map(function (v, i) {
       v = v || {};
@@ -1531,7 +1532,7 @@
   }
 
   function renderReel(asset) {
-    var skripte = (asset.content || {}).skripte || [];
+    var skripte = arr((asset.content || {}).skripte);
     if (!skripte.length) return '<div class="dlm-empty">Nicht vorhanden.</div>';
     return skripte.map(function (s, i) {
       s = s || {};
@@ -1541,13 +1542,13 @@
       }).join('');
       return '<div class="dlm-variant-card">' +
         '<h4>' + esc(s.titel || ('Skript ' + (i + 1))) + '</h4>' +
-        '<ul class="dlm-punkte">' + (s.hook_varianten || []).map(function (h) { return '<li>' + esc(h) + '</li>'; }).join('') + '</ul>' +
+        '<ul class="dlm-punkte">' + arr(s.hook_varianten).map(function (h) { return '<li>' + esc(h) + '</li>'; }).join('') + '</ul>' +
         '<table class="dlm-table"><thead><tr><th>Zeit</th><th>Sprechtext</th><th>Bild</th><th>Einblendung</th></tr></thead><tbody>' + rows + '</tbody></table>' +
         '<p><strong>CTA:</strong> ' + esc(s.cta || 'Nicht vorhanden') + '</p>' +
         '<p>' + inlineMd(s.caption || '') + '</p>' +
         '<p class="dlm-muted">' + hashtagsArr(s.hashtags).map(function (h) { return esc(h); }).join(' ') + '</p>' +
         '<p class="dlm-small">' + esc(s.dreh_hinweise || '') + '</p>' +
-        copyBtn([s.titel, (s.hook_varianten || []).join(' / '), s.caption].filter(Boolean).join('\n\n')) +
+        copyBtn([s.titel, arr(s.hook_varianten).join(' / '), s.caption].filter(Boolean).join('\n\n')) +
         '</div>';
     }).join('');
   }
@@ -1584,7 +1585,7 @@
 
   function renderEmail(asset) {
     var content = asset.content || {};
-    var mails = content.mails || [];
+    var mails = arr(content.mails);
     if (!mails.length) return '<div class="dlm-empty">Nicht vorhanden.</div>';
     var html = '<p class="dlm-muted">' + esc(content.sequenz_name || '') + ' - ' + esc(content.zweck || '') + '</p><div class="dlm-accordion">';
     html += mails.map(function (m, i) {
@@ -1607,7 +1608,7 @@
 
   function renderVsl(asset) {
     var content = asset.content || {};
-    var struktur = content.struktur || [];
+    var struktur = arr(content.struktur);
     if (!struktur.length) return '<div class="dlm-empty">Nicht vorhanden.</div>';
     return '<h4>' + esc(content.titel || '') + ' (' + esc(content.dauer_min || '?') + ' Min.)</h4>' +
       '<div class="dlm-vsl-list">' + struktur.map(function (s) {
@@ -1624,7 +1625,7 @@
 
   function renderLeadmagnet(asset) {
     var c = asset.content || {};
-    var kapitel = Array.isArray(c.kapitel) ? c.kapitel : [];
+    var kapitel = arr(c.kapitel).map(function (k) { return (k && typeof k === 'object') ? k : { ueberschrift: '', text: String(k || '') }; });
     return '<div class="dlm-book">' +
       '<div class="dlm-book-cover"><h2>' + esc(c.titel || 'Ohne Titel') + '</h2><p>' + esc(c.untertitel || '') + '</p><p class="dlm-muted">' + esc(c.versprechen || '') + '</p></div>' +
       '<p>' + inlineMd(c.einleitung || '') + '</p>' +
@@ -1663,7 +1664,7 @@
 
   function renderFunnel(asset) {
     var c = asset.content || {};
-    var schritte = Array.isArray(c.schritte) ? c.schritte : [];
+    var schritte = arr(c.schritte).map(function (st) { return (st && typeof st === 'object') ? st : { seite: '', headline: String(st || '') }; });
     return '<p class="dlm-muted"><strong>' + esc(c.funnel_typ || '') + '</strong> - ' + esc(c.begruendung || '') + '</p>' +
       '<div class="dlm-funnel-flow">' + schritte.map(function (s) {
         s = s || {};
@@ -1908,19 +1909,19 @@
 
       var exportAsset = t.closest('[data-action="export-asset"]');
       if (exportAsset) {
-        var asset = (STATE.assets || []).filter(function (a) { return a.id === exportAsset.getAttribute('data-id'); })[0];
+        var asset = arr(STATE.assets).filter(function (a) { return a.id === exportAsset.getAttribute('data-id'); })[0];
         if (asset) download('asset-' + asset.typ + '-' + asset.id + '.md', assetToMarkdown(asset));
         return;
       }
       var copyAllAsset = t.closest('[data-action="copy-all-asset"]');
       if (copyAllAsset) {
-        var asset2 = (STATE.assets || []).filter(function (a) { return a.id === copyAllAsset.getAttribute('data-id'); })[0];
+        var asset2 = arr(STATE.assets).filter(function (a) { return a.id === copyAllAsset.getAttribute('data-id'); })[0];
         if (asset2) copyText(assetAllText(asset2));
         return;
       }
       var printLm = t.closest('[data-action="print-leadmagnet"]');
       if (printLm) {
-        var asset3 = (STATE.assets || []).filter(function (a) { return a.id === printLm.getAttribute('data-id'); })[0];
+        var asset3 = arr(STATE.assets).filter(function (a) { return a.id === printLm.getAttribute('data-id'); })[0];
         if (asset3) printLeadmagnet(asset3, STATE.project);
         return;
       }

@@ -40,7 +40,7 @@ const TEMPERATURE = {
 };
 const DEFAULT_TEMPERATURE = 0.7;
 
-const MAX_USER_CHARS = 60000;
+const MAX_USER_CHARS = 120000;
 
 // Reihenfolge aller 17 Analyse-Kategorien aus §3 der Spezifikation.
 const KATEGORIEN_ALL = [
@@ -354,6 +354,81 @@ function buildUserContext(task, ctx) {
   return userCtx;
 }
 
+
+// ---- JSON-Schemas fuer den erzwungenen Tool-Aufruf (anthropic.js) ----
+// Das Modell haelt sich an ein echtes input_schema deutlich zuverlaessiger als an eine
+// Textbeschreibung (z. B. keine Strings statt Arrays). Die Textschemas oben bleiben als
+// Erklaerung im System-Prompt.
+const S = {
+  str: { type: "string" },
+  strArr: { type: "array", items: { type: "string" } },
+  obj: (props, required) => ({ type: "object", properties: props, required: required || Object.keys(props), additionalProperties: true }),
+};
+const KAT = S.obj({ titel: S.str, inhalt: S.str, punkte: S.strArr }, ["titel", "inhalt"]);
+function analyseJsonSchema(kategorien) {
+  const keys = Array.isArray(kategorien) && kategorien.length ? kategorien : KATEGORIEN_ALL;
+  const props = {};
+  keys.forEach((k) => { props[k] = KAT; });
+  props.meta = S.obj({ erzeugt_am: S.str, modell: S.str, version: S.str }, []);
+  return { type: "object", properties: props, required: keys, additionalProperties: false };
+}
+const JSON_SCHEMAS = {
+  winkel: S.obj({
+    winkel: { type: "array", items: S.obj({
+      id: S.str, titel: S.str, kernbotschaft: S.str, bezug: S.str,
+      awareness: { type: "string", enum: ["unbewusst", "problembewusst", "loesungsbewusst", "produktbewusst", "meistbewusst"] },
+      treiber: S.str, hook_beispiel: S.str, warum_wirkt: S.str, formate: S.strArr, risiko: S.str,
+    }) },
+  }),
+  creative: S.obj({
+    varianten: { type: "array", items: S.obj({
+      headline: S.str, subline: S.str, primary_text: S.str, cta: S.str, bild_prompt: S.str, bild_text: S.str,
+      bilder: S.obj({ "1:1": { type: ["string", "null"] }, "4:5": { type: ["string", "null"] }, "9:16": { type: ["string", "null"] } }, []),
+    }, ["headline", "subline", "primary_text", "cta", "bild_prompt", "bild_text"]) },
+  }),
+  reel: S.obj({
+    skripte: { type: "array", items: S.obj({
+      titel: S.str, hook_varianten: S.strArr,
+      szenen: { type: "array", items: S.obj({ zeit: S.str, sprechtext: S.str, bild_hinweis: S.str, text_einblendung: S.str }) },
+      cta: S.str, caption: S.str, hashtags: S.strArr, dreh_hinweise: S.str,
+    }) },
+  }),
+  caption: S.obj({
+    beitraege: { type: "array", items: S.obj({ plattform: S.str, format: S.str, hook: S.str, text: S.str, cta: S.str, hashtags: S.strArr }) },
+  }),
+  olg: S.obj({
+    beitraege: { type: "array", items: S.obj({ kanal: S.str, typ: S.str, text: S.str, soft_cta: S.str }) },
+  }),
+  email: S.obj({
+    sequenz_name: S.str, zweck: S.str,
+    mails: { type: "array", items: S.obj({ nr: { type: "integer" }, tag: { type: "integer" }, betreff_varianten: S.strArr, preheader: S.str, text: S.str, cta: S.str, ps: S.str }) },
+  }),
+  vsl: S.obj({
+    titel: S.str, dauer_min: { type: "number" },
+    struktur: { type: "array", items: S.obj({ abschnitt: S.str, minute: S.str, sprechtext: S.str, folie_hinweis: S.str, ziel: S.str }) },
+    cta_text: S.str, hinweise: S.str,
+  }),
+  leadmagnet: S.obj({
+    titel: S.str, untertitel: S.str, versprechen: S.str, einleitung: S.str,
+    kapitel: { type: "array", items: S.obj({ ueberschrift: S.str, text: S.str, punkte: S.strArr }, ["ueberschrift", "text"]) },
+    checkliste: S.strArr, abschluss_cta: S.str, autor_box: S.str,
+  }),
+  funnel: S.obj({
+    funnel_typ: S.str, begruendung: S.str,
+    schritte: { type: "array", items: S.obj({
+      nr: { type: "integer" }, seite: S.str, ziel: S.str, headline: S.str, subheadline: S.str,
+      abschnitte: { type: "array", items: S.obj({ titel: S.str, text: S.str }) }, cta: S.str, hinweise: S.str,
+    }) },
+    nachfass: { type: "array", items: S.obj({ zeitpunkt: S.str, kanal: S.str, ziel: S.str, text: S.str }) },
+    kennzahlen_ziel: S.str,
+  }),
+  konsistenz: S.obj({
+    score: { type: "integer" },
+    befunde: { type: "array", items: S.obj({ asset_typ: S.str, problem: S.str, vorschlag: S.str, schwere: { type: "string", enum: ["hoch", "mittel", "niedrig"] } }) },
+    fazit: S.str,
+  }),
+};
+
 // ctx = { project, campaign, asset, typ, winkel, winkel_id, profile, hinweis, mehr, anzahl }
 function buildPrompt(task, ctx) {
   ctx = ctx || {};
@@ -378,7 +453,8 @@ function buildPrompt(task, ctx) {
   const max_tokens = istAnalyseTeil ? 20000 : (MAX_TOKENS[task] || 20000);
   const temperature = Object.prototype.hasOwnProperty.call(TEMPERATURE, task) ? TEMPERATURE[task] : DEFAULT_TEMPERATURE;
 
-  return { system, user, max_tokens, temperature };
+  const input_schema = schemaKey === "analyse" ? analyseJsonSchema(ctx.kategorien) : JSON_SCHEMAS[schemaKey];
+  return { system, user, max_tokens, temperature, input_schema };
 }
 
-module.exports = { buildPrompt, SCHEMAS, MODULE_BY_TYPE, KATEGORIEN_ALL, KATEGORIE_TEILE };
+module.exports = { buildPrompt, SCHEMAS, JSON_SCHEMAS, MODULE_BY_TYPE, KATEGORIEN_ALL, KATEGORIE_TEILE };

@@ -34,7 +34,7 @@ async function streamText(opts) {
     body.tools = [{
       name: "ergebnis",
       description: "Liefert das fertige Ergebnis als JSON-Objekt genau nach dem im System-Prompt beschriebenen Schema.",
-      input_schema: { type: "object", additionalProperties: true },
+      input_schema: (opts.schema && typeof opts.schema === "object") ? opts.schema : { type: "object", additionalProperties: true },
     }];
     // Erzwungenes tool_choice ("tool"/"any") unterstuetzen neuere Modelle nicht mehr, deshalb
     // "auto" plus klare Anweisung im System-Prompt. Antwortet das Modell doch als Text, greift

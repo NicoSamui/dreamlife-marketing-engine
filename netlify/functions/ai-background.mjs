@@ -155,7 +155,7 @@ async function runAnalyseParts(job, ctx, key, reportChars) {
       project: ctx.project, hinweis: ctx.hinweis, profile: ctx.profile, kategorien,
     });
     return streamText({
-      key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens,
+      key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
       onDelta: (deltaText) => {
         charsByTeil[n] += deltaText.length;
         reportChars(totalChars());
@@ -190,7 +190,7 @@ async function runAnalyseParts(job, ctx, key, reportChars) {
   if (fehlend.length) {
     try {
       const pd = prompts.buildPrompt('analyse', { project: ctx.project, hinweis: ctx.hinweis, profile: ctx.profile, kategorien: fehlend });
-      const txt = await streamText({ key, model: MODEL, system: pd.system, user: pd.user, max_tokens: pd.max_tokens,
+      const txt = await streamText({ key, model: MODEL, system: pd.system, user: pd.user, max_tokens: pd.max_tokens, schema: pd.input_schema,
         onDelta: (d) => { charsByTeil[nummern[0]] += d.length; reportChars(totalChars()); } });
       const nach = textHelpers.deepStripDashes(textHelpers.extractJSON(txt));
       fehlend.forEach((k) => { if (nach && nach[k]) merged[k] = nach[k]; });
@@ -286,6 +286,20 @@ export default async (req) => {
     } catch (e) { /* optional */ }
     ctx.profile = profile;
 
+    // Konsistenz-Check: alle fertigen Assets der Kampagne mitgeben (kompakt, je Asset gekuerzt).
+    let assetsCtx = [];
+    if (task === 'konsistenz' && campaign) {
+      try {
+        const rows = await supa.select('me_assets', 'select=typ,titel,content&campaign_id=eq.' + campaign.id + '&status=eq.fertig&order=created_at.asc&limit=40');
+        assetsCtx = (Array.isArray(rows) ? rows : []).map((r) => {
+          let inhalt = '';
+          try { inhalt = JSON.stringify(r.content || {}); } catch (e) { inhalt = ''; }
+          if (inhalt.length > 9000) inhalt = inhalt.slice(0, 9000) + ' ...[gekuerzt]';
+          return { typ: r.typ, titel: r.titel, inhalt };
+        });
+      } catch (e) { console.warn('Assets fuer Konsistenz nicht ladbar', e && e.message); }
+    }
+
     let saveCtx = { project, campaign, asset, uid, typ, mehr: ctx.mehr };
     let jobResult;
 
@@ -296,10 +310,10 @@ export default async (req) => {
     } else {
       const promptData = prompts.buildPrompt(task, {
         project, campaign, asset, typ, winkel: ctx.winkel, winkel_id: ctx.winkel_id,
-        profile, hinweis: ctx.hinweis, mehr: ctx.mehr, anzahl: ctx.anzahl,
+        profile, hinweis: ctx.hinweis, mehr: ctx.mehr, anzahl: ctx.anzahl, assets: assetsCtx,
       });
       const fullText = await streamText({
-        key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens,
+        key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
         onDelta: (_delta, total) => reportChars(total),
       });
       reportChars(fullText.length, true);
