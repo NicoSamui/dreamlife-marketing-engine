@@ -7,6 +7,8 @@
 
 "use strict";
 
+const { notifyAdmin, classifyProviderError, FREUNDLICH } = require("./alert.js");
+
 const ANTHROPIC_VERSION = "2023-06-01";
 
 async function callOnce(key, payload) {
@@ -59,10 +61,18 @@ async function streamText(opts) {
     let m = "";
     try { const j = await res.json(); m = (j && j.error && j.error.message) || ""; } catch (e) {}
     lastMsg = m || ("KI-Fehler (" + res.status + ").");
+    const grund = classifyProviderError(res.status, m);
+    if (grund) {
+      // Anbieter-Problem (Guthaben/Schluessel): Nico per WhatsApp informieren, Teilnehmer
+      // bekommt eine freundliche Meldung statt der englischen Rohmeldung.
+      console.error("Anthropic-Anbieterfehler", grund, res.status, m);
+      await notifyAdmin("anthropic-" + grund, "Anthropic " + (grund === "guthaben" ? "Guthaben aufgebraucht" : "Schluessel ungueltig") + ". Teilnehmer koennen gerade keine KI-Laeufe starten. Meldung: " + m);
+      const err = new Error(FREUNDLICH); err.code = "provider_" + grund; throw err;
+    }
     const retriable = res.status === 429 || res.status === 529 || res.status >= 500;
     if (!retriable) break;
   }
-  if (!upstream) throw new Error(lastMsg);
+  if (!upstream) throw new Error(/ueberlast|overloaded|rate/i.test(lastMsg) ? "Die KI ist gerade stark ausgelastet. Bitte versuch es in ein paar Minuten noch einmal." : lastMsg);
 
   const reader = upstream.body.getReader();
   const decoder = new TextDecoder();

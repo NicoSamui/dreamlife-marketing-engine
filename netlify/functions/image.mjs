@@ -17,6 +17,7 @@
 import { randomUUID } from 'node:crypto';
 import aiGuard from './_shared/ai-guard.js';
 import scopedDb from './_shared/scoped-db.js';
+import alertMod from './_shared/alert.js';
 import supa from './_shared/supa.js';
 
 const MODEL = process.env.IMAGE_MODEL || 'gpt-image-2';
@@ -113,6 +114,12 @@ async function generateImage(key, prompt, size, fallbackSize) {
     }
 
     lastMsg = errObj.message || ('Bild-Dienst meldet Fehler ' + res.status + '.');
+    const grund = alertMod.classifyProviderError(res.status, (errObj.code || '') + ' ' + (errObj.message || ''));
+    if (grund) {
+      console.error('OpenAI-Anbieterfehler', grund, res.status, errObj.message);
+      await alertMod.notifyAdmin('openai-' + grund, 'OpenAI ' + (grund === 'guthaben' ? 'Guthaben aufgebraucht' : 'Schluessel ungueltig') + '. Teilnehmer koennen gerade keine KI-Bilder erzeugen. Meldung: ' + (errObj.message || ''));
+      return { ok: false, message: alertMod.FREUNDLICH };
+    }
     const retriable = res.status === 429 || res.status >= 500;
     if (!retriable) break;
   }

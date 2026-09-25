@@ -435,8 +435,10 @@
     el.className = 'dlm-toast';
     el.textContent = msg;
     wrap.appendChild(el);
-    setTimeout(function () { el.classList.add('dlm-toast-out'); }, 3200);
-    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3700);
+    // Lange Meldungen (z. B. Fehler) bleiben laenger stehen.
+    var dauer = Math.min(12000, Math.max(3200, String(msg || '').length * 55));
+    setTimeout(function () { el.classList.add('dlm-toast-out'); }, dauer);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, dauer + 500);
   }
 
   /* ------------------------------------------------------------------
@@ -1012,6 +1014,20 @@
           toast(err && err.message ? err.message : T.genericError);
           rerender();
         });
+      });
+    }).catch(function () {});
+    // Fehlgeschlagene Laeufe der letzten 30 Minuten einmal pro Sitzung melden, damit ein
+    // Fehler nach Neuladen oder Tab-Wechsel nicht still verschwindet.
+    var seit = new Date(Date.now() - 30 * 60000).toISOString();
+    DB.get('me_jobs?select=id,task,typ,fehler,project_id,campaign_id,updated_at&status=eq.fehler&updated_at=gt.' + encodeURIComponent(seit) + '&order=updated_at.desc&limit=5').then(function (jobs) {
+      STATE.seenFailed = STATE.seenFailed || {};
+      arr(jobs).forEach(function (job) {
+        if (job.project_id !== projectId) return;
+        if (campaignId && job.campaign_id && job.campaign_id !== campaignId) return;
+        if (STATE.seenFailed[job.id]) return;
+        STATE.seenFailed[job.id] = true;
+        var was = job.task === 'winkel' ? 'Winkel-Erzeugung' : job.task === 'konsistenz' ? 'Konsistenz-Check' : job.task === 'asset' ? assetLabel(job.typ) : 'Zielgruppenanalyse';
+        toast(was + ' ist fehlgeschlagen: ' + (job.fehler || T.genericError) + ' Bitte starte sie noch einmal.');
       });
     }).catch(function () {});
   }
