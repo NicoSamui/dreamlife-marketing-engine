@@ -333,6 +333,24 @@ function briefFields(brief) {
 }
 
 // Baut das User-Kontextobjekt (vor dem Kuerzen) fuer eine Aufgabe.
+// Reicht die vom Teilnehmer ausgestaltete Avatar-Person (SPEC §11, Frontend-Erweiterung
+// "Schritt Avatar") in den Prompt-Kontext durch, ohne bilder/bild_prompt (die KI braucht
+// nur die Persoenlichkeits-Felder, keine Bild-URLs oder den Bild-Prompt).
+function addAvatarContext(userCtx, project) {
+  const a = project.avatar;
+  if (!a || typeof a !== "object" || !Object.keys(a).length) return;
+  const out = {};
+  if (a.name) out.name = a.name;
+  if (a.alter) out.alter = a.alter;
+  if (a.beruf) out.beruf = a.beruf;
+  if (a.kurzbeschreibung) out.kurzbeschreibung = a.kurzbeschreibung;
+  if (Array.isArray(a.werte) && a.werte.length) out.werte = a.werte;
+  if (a.ziele) out.ziele = a.ziele;
+  if (a.sorge) out.sorge = a.sorge;
+  if (a.motto) out.motto = a.motto;
+  if (Object.keys(out).length) userCtx.avatar = out;
+}
+
 function buildUserContext(task, ctx) {
   // decode hat keinen Brief/Projekt-Bezug (siehe SPEC §10): nur die Aufgabe und der
   // aktuelle Name der Vorlage gehen in den User-Kontext.
@@ -361,6 +379,7 @@ function buildUserContext(task, ctx) {
 
   if (task === "winkel") {
     if (project.analyse) userCtx.analyse = project.analyse;
+    addAvatarContext(userCtx, project);
     if (ctx.mehr) {
       const bestehende = Array.isArray(project.winkel) ? project.winkel : [];
       userCtx.bestehende_winkel_titel = bestehende.map((w) => w && w.titel).filter(Boolean);
@@ -374,6 +393,7 @@ function buildUserContext(task, ctx) {
 
   if (task === "asset") {
     if (project.analyse) userCtx.analyse = project.analyse;
+    addAvatarContext(userCtx, project);
     if (Array.isArray(ctx.winkel) && ctx.winkel.length) userCtx.winkel = ctx.winkel;
     // Die neuen Kurz-Winkel (SPEC §11.5) sind bewusst nur Skizzen (id, titel, kurz, awareness,
     // typ), alte Winkel-Objekte mit kernbotschaft usw. werden unveraendert durchgereicht.
@@ -402,6 +422,7 @@ function buildUserContext(task, ctx) {
 
   if (task === "konsistenz") {
     if (project.analyse) userCtx.analyse = project.analyse;
+    addAvatarContext(userCtx, project);
     const campaign = ctx.campaign || {};
     userCtx.kampagnenziel = campaign.ziel;
     userCtx.angebot = campaign.angebot;

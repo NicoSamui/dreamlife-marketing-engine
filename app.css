@@ -117,7 +117,7 @@ a { color: var(--dl-accent); }
 .dlm-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; max-width: 1000px; }
 .dlm-field { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--dl-ink); }
 .dlm-field em { color: var(--dl-muted); font-weight: 500; font-style: normal; }
-.dlm-field input[type="text"], .dlm-field textarea, .dlm-field select {
+.dlm-field input[type="text"], .dlm-field input[type="number"], .dlm-field input[type="url"], .dlm-field input[type="email"], .dlm-field textarea, .dlm-field select {
   font: inherit; font-size: 14px; padding: 10px 12px; border-radius: 10px;
   border: 1px solid var(--dl-panel-border); background: var(--dl-panel2); color: var(--dl-ink); resize: vertical;
 }
@@ -470,4 +470,34 @@ input.dlm-title#dlm-template-name:hover, input.dlm-title#dlm-template-name:focus
 @media (max-width: 700px) {
   .dlm-freebie-toolbar { flex-direction: column; align-items: stretch; }
   .dlm-freebie-actions { margin-left: 0; }
+}
+
+/* ---------------------------------------------------------------------
+   Schritt Avatar: Bild-Bereich, Profil-Formular, Visitenkarte (Wunsch Nico)
+   --------------------------------------------------------------------- */
+.dlm-avatar-motto-mini { margin: 2px 0 0; font-size: 12.5px; font-style: italic; color: var(--dl-muted); }
+.dlm-avatar-zeile { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); margin-bottom: 18px; flex-wrap: wrap; }
+.dlm-avatar-zeile-info { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 140px; }
+
+.dlm-avatar-tab-grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+.dlm-avatar-bildspalte { padding: 20px; border-radius: var(--radius); background: var(--dl-panel); border: 1px solid var(--dl-panel-border); }
+.dlm-avatar-big-pic { display: flex; justify-content: center; margin-bottom: 16px; }
+.dlm-avatar-big-pic .dlm-avatar-pic { width: 260px; height: 260px; font-size: 44px; }
+.dlm-avatar-profilspalte { padding: 20px; border-radius: var(--radius); background: var(--dl-panel); border: 1px solid var(--dl-panel-border); }
+.dlm-avatar-form .dlm-field-wide { grid-column: 1 / -1; }
+.dlm-chip-input { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--dl-panel-border); border-radius: 10px; background: var(--dl-panel2); }
+.dlm-chip-input input[type="text"] { flex: 1 1 140px; border: 0; background: none; padding: 4px; min-width: 120px; font: inherit; color: var(--dl-ink); }
+.dlm-chip-input input[type="text"]:focus { outline: none; }
+.dlm-chip-removable { gap: 6px; }
+.dlm-chip-x { border: 0; background: none; color: inherit; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; margin-left: 2px; }
+.dlm-chips-vorschlaege { margin-top: 8px; }
+.dlm-chips-vorschlaege .dlm-chip { cursor: pointer; }
+
+.dlm-avatar-visitenkarte { margin-top: 22px; padding: 22px; border-radius: var(--radius); background: var(--dl-panel); border: 1px solid var(--dl-panel-border); }
+.dlm-avatar-visitenkarte-head { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+.dlm-avatar-motto { margin: 4px 0 0; font-style: italic; color: var(--dl-muted); }
+.dlm-avatar-visitenkarte-actions { justify-content: flex-end; }
+
+@media (max-width: 800px) {
+  .dlm-avatar-tab-grid { grid-template-columns: 1fr; }
 }

@@ -117,6 +117,8 @@
     tabBrief: 'Brief',
     tabZielgruppe: 'Zielgruppe',
     tabWinkel: 'Winkel',
+    tabAvatar: 'Avatar',
+    tabAvatarHint: 'Erst Zielgruppenanalyse erstellen',
     tabKampagnen: 'Kampagnen',
     briefHelp: 'Je konkreter, desto besser wird die Analyse.',
     briefSaved: 'Gespeichert.',
@@ -221,6 +223,24 @@
     avatarBildErzeugen: 'Erzeugen',
     avatarBilderAlle: 'Alle drei erzeugen',
     avatarBildLaeuft: 'Wird erzeugt...',
+    avatarAusgestalten: 'Avatar ausgestalten',
+    avatarZeileOhneName: 'Noch kein Avatar ausgestaltet',
+    avatarBildHinweisLeer: 'Für Bilder braucht die KI zuerst einen Bild-Prompt, Alter, Beruf oder Aussehen. Fülle rechts das Profil aus oder erzeuge zuerst die Zielgruppenanalyse.',
+    avatarLabelName: 'Name',
+    avatarLabelAlter: 'Alter',
+    avatarLabelBeruf: 'Beruf',
+    avatarLabelKurz: 'Kurzbeschreibung',
+    avatarLabelWerte: 'Werte',
+    avatarWertePh: 'Wert eingeben und Enter oder Komma drücken...',
+    avatarLabelZiele: 'Ziele',
+    avatarZielePh: 'Was will diese Person in den nächsten 12 Monaten erreichen?',
+    avatarLabelSorge: 'Größte Sorge',
+    avatarLabelAussehen: 'Aussehen und Auftreten',
+    avatarAussehenPh: 'Wie sieht die Person aus, wie kleidet sie sich? Fließt in die Bilder ein.',
+    avatarLabelMotto: 'Lebensmotto',
+    avatarUebernehmen: 'Vorschläge aus der Analyse übernehmen',
+    avatarGespeichert: 'Gespeichert.',
+    avatarVisitenkarteTitel: 'Avatar-Visitenkarte',
     freebieTheme: 'Design',
     freebieAkzent: 'Akzentfarbe',
     freebiePrint: 'Als PDF drucken',
@@ -332,6 +352,8 @@
     { feld: 'notizen', frage: 'Gibt es noch etwas, das die KI wissen sollte?', optional: true, type: 'textarea' }
   ];
   var AVATAR_STILE = [['foto', 'Foto'], ['illustration', 'Illustration'], ['karikatur', 'Karikatur']];
+  /* Vorschlags-Chips fuer das Feld "Werte" im Tab Avatar (Profil-Formular). */
+  var AVATAR_WERTE_VORSCHLAEGE = ['Sicherheit', 'Freiheit', 'Familie', 'Anerkennung', 'Wachstum', 'Gesundheit', 'Kontrolle', 'Ehrlichkeit', 'Erfolg', 'Ruhe'];
 
   /* ------------------------------------------------------------------
      2) Zustand
@@ -840,7 +862,8 @@
           '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button></div>' +
           '<div class="dlm-avatar-card-head">' + avatarPicHtml(p, 56) +
           '<div><h3 class="dlm-project-title"><span>' + esc(avatarDisplayName(p) || p.name) + '</span></h3>' +
-          (berufZeile ? '<p class="dlm-muted dlm-small">' + esc(berufZeile) + '</p>' : '') + '</div></div>' +
+          (berufZeile ? '<p class="dlm-muted dlm-small">' + esc(berufZeile) + '</p>' : '') +
+          (a.motto ? '<p class="dlm-avatar-motto-mini">&raquo;' + esc(a.motto) + '&laquo;</p>' : '') + '</div></div>' +
           '<p class="dlm-muted dlm-branch-row dlm-small">' + esc([p.brief && p.brief.firma, p.brief && p.brief.branche].filter(Boolean).join(' · ') || 'Ohne Branche') + '</p>' +
           '<div class="dlm-chips">' + statusChips(p) + '<span class="dlm-chip">Kampagnen&nbsp;<span data-camp-count="' + esc(p.id) + '">...</span></span></div>' +
           '<p class="dlm-muted dlm-small">Zuletzt bearbeitet ' + esc(fmtDate(p.updated_at)) + '</p>' +
@@ -914,11 +937,14 @@
      ------------------------------------------------------------------ */
   function tabStatus(project) {
     var winkelCount = arr(project.winkel_auswahl).length;
+    var a = avatarOf(project);
     return {
       brief: true,
       zielgruppe: project.analyse_status === 'fertig',
       winkel: project.analyse_status === 'fertig',
       winkelDone: winkelCount >= 5,
+      avatar: project.analyse_status === 'fertig',
+      avatarDone: !!(a.name && avatarChosenImageUrl(project)),
       kampagnen: winkelCount >= 5
     };
   }
@@ -939,17 +965,20 @@
       if (tab === 'interview') tab = 'brief';
       var st = tabStatus(p);
       if (tab === 'winkel' && !st.winkel) tab = 'brief';
+      if (tab === 'avatar' && !st.avatar) tab = 'brief';
 
       app.innerHTML =
         '<div class="dlm-wrap">' +
         '<div class="dlm-head-row">' +
-        '<div class="dlm-avatar-headline">' + avatarPicHtml(p, 48) + '<h1 class="dlm-title">' + esc(avatarDisplayName(p) || p.name) + '</h1></div>' +
+        '<div class="dlm-avatar-headline">' + avatarPicHtml(p, 48) + '<div><h1 class="dlm-title">' + esc(avatarDisplayName(p) || p.name) + '</h1>' +
+        (avatarOf(p).motto ? '<p class="dlm-avatar-motto-mini">&raquo;' + esc(avatarOf(p).motto) + '&laquo;</p>' : '') + '</div></div>' +
         kampagneBauenBtn(p) +
         '</div>' +
         '<nav class="dlm-stepper" id="dlm-stepper">' +
         stepperTab(1, 'brief', T.tabBrief, true, true, tab, '') +
         stepperTab(2, 'zielgruppe', T.tabZielgruppe, true, st.zielgruppe, tab, '') +
-        stepperTab(3, 'winkel', T.tabWinkel, st.winkel, st.winkelDone, tab, 'Erst Zielgruppenanalyse erstellen') +
+        stepperTab(3, 'winkel', T.tabWinkel, st.winkel, st.winkelDone, tab, T.tabAvatarHint) +
+        stepperTab(4, 'avatar', T.tabAvatar, st.avatar, st.avatarDone, tab, T.tabAvatarHint) +
         '</nav>' +
         '<div id="dlm-tab-body"></div>' +
         '</div>';
@@ -962,6 +991,7 @@
       var body = $('dlm-tab-body');
       if (tab === 'brief') renderBriefTab(body, p);
       else if (tab === 'zielgruppe') renderZielgruppeTab(body, p);
+      else if (tab === 'avatar') renderAvatarTab(body, p);
       else renderWinkelTab(body, p);
     }).catch(function () {
       app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
@@ -1288,41 +1318,226 @@
   }
 
   /* --- Zielgruppe --------------------------------------------------- */
-  /* Avatar-Karte im Tab Zielgruppe (SPEC §11.3): Name/Alter/Beruf/Kurzbeschreibung,
-     drei Bild-Slots (foto/illustration/karikatur) mit Erzeugen-Button je Slot. */
-  function renderAvatarCard(p) {
+  /* Kompakte Avatar-Zeile im Tab Zielgruppe (der grosse Bild-/Profil-Bereich
+     ist in den eigenen Schritt "Avatar" umgezogen, siehe renderAvatarTab). */
+  function renderAvatarZeile(p) {
     var a = avatarOf(p);
-    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
     var berufZeile = [a.alter ? (a.alter + ' Jahre') : '', a.beruf || ''].filter(Boolean).join(' · ');
-    var html = '<div class="dlm-avatar-bigcard">' +
-      '<div class="dlm-avatar-bigcard-head">' + avatarPicHtml(p, 72) +
-      '<div><h2 class="dlm-title" style="margin:0;">' + esc(a.name || p.name) + '</h2>' +
-      (berufZeile ? '<p class="dlm-muted">' + esc(berufZeile) + '</p>' : '') + '</div></div>' +
-      (a.kurzbeschreibung ? '<p class="dlm-avatar-kurz">' + esc(a.kurzbeschreibung) + '</p>' : '');
+    return '<div class="dlm-avatar-zeile">' + avatarPicHtml(p, 48) +
+      '<div class="dlm-avatar-zeile-info"><strong>' + esc(a.name || T.avatarZeileOhneName) + '</strong>' +
+      (berufZeile ? '<span class="dlm-muted dlm-small">' + esc(berufZeile) + '</span>' : '') + '</div>' +
+      '<a class="dlp-btn dlp-ghost" href="#/p/' + esc(p.id) + '?tab=avatar">' + esc(T.avatarAusgestalten) + '</a>' +
+      '</div>';
+  }
 
-    if (!a.bild_prompt) {
-      html += '<p class="dlm-muted dlm-small">' + esc(T.avatarBilderHint) + '</p>';
+  /* --- Avatar (Bild-Bereich, aus dem Tab Zielgruppe hierher verschoben) --- */
+  function avatarSlotHtml(p, a, stil, label) {
+    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
+    var eintrag = bilder.filter(function (b) { return b && b.stil === stil; })[0];
+    var running = !!STATE.running['avatar-' + p.id + '-' + stil];
+    var chosen = a.gewaehlt === stil;
+    return '<div class="dlm-avatar-slot' + (chosen ? ' dlm-avatar-slot-chosen' : '') + '">' +
+      (running
+        ? '<div class="dlm-avatar-slot-ph">' + esc(T.avatarBildLaeuft) + '</div>'
+        : (eintrag && eintrag.url
+          ? '<button type="button" class="dlm-avatar-slot-img" data-action="choose-avatar-bild" data-stil="' + esc(stil) + '"><img src="' + esc(eintrag.url) + '" alt=""></button>'
+          : '<div class="dlm-avatar-slot-ph">' + esc(label) + '</div>')) +
+      '<div class="dlm-avatar-slot-foot"><span class="dlm-small">' + esc(label) + (chosen ? ' · gewählt' : '') + '</span>' +
+      (!running ? '<button type="button" class="dlm-text-btn" data-action="gen-avatar-bild" data-stil="' + esc(stil) + '">' + esc(T.avatarBildErzeugen) + '</button>' : '') +
+      '</div></div>';
+  }
+
+  /* Linke Spalte des Tabs Avatar: grosses gewaehltes Bild plus die drei Stil-Slots. */
+  function renderAvatarBildSpalte(p) {
+    var a = avatarOf(p);
+    var html = '<div class="dlm-avatar-bildspalte">' +
+      '<div class="dlm-avatar-big-pic">' + avatarPicHtml(p, 260) + '</div>';
+    var hatGrundlage = a.bild_prompt || a.alter || a.beruf || a.aussehen;
+    if (!hatGrundlage) {
+      html += '<p class="dlm-muted dlm-small">' + esc(T.avatarBildHinweisLeer) + '</p>';
     } else {
-      html += '<div class="dlm-avatar-slots">';
-      AVATAR_STILE.forEach(function (s) {
-        var stil = s[0], label = s[1];
-        var eintrag = bilder.filter(function (b) { return b && b.stil === stil; })[0];
-        var running = !!STATE.running['avatar-' + p.id + '-' + stil];
-        var chosen = a.gewaehlt === stil;
-        html += '<div class="dlm-avatar-slot' + (chosen ? ' dlm-avatar-slot-chosen' : '') + '">' +
-          (running
-            ? '<div class="dlm-avatar-slot-ph">' + esc(T.avatarBildLaeuft) + '</div>'
-            : (eintrag && eintrag.url
-              ? '<button type="button" class="dlm-avatar-slot-img" data-action="choose-avatar-bild" data-stil="' + esc(stil) + '"><img src="' + esc(eintrag.url) + '" alt=""></button>'
-              : '<div class="dlm-avatar-slot-ph">' + esc(label) + '</div>')) +
-          '<div class="dlm-avatar-slot-foot"><span class="dlm-small">' + esc(label) + (chosen ? ' · gewählt' : '') + '</span>' +
-          (!running ? '<button type="button" class="dlm-text-btn" data-action="gen-avatar-bild" data-stil="' + esc(stil) + '">' + esc(T.avatarBildErzeugen) + '</button>' : '') +
-          '</div></div>';
-      });
-      html += '</div><div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" data-action="gen-avatar-bild-all">' + esc(T.avatarBilderAlle) + '</button></div>';
+      html += '<div class="dlm-avatar-slots">' + AVATAR_STILE.map(function (s) { return avatarSlotHtml(p, a, s[0], s[1]); }).join('') + '</div>' +
+        '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" data-action="gen-avatar-bild-all">' + esc(T.avatarBilderAlle) + '</button></div>';
     }
     html += '</div>';
     return html;
+  }
+
+  /* Kuerzt einen Punkt-Text auf hoechstens n Woerter (fuer Werte-Vorschlaege aus der Analyse). */
+  function truncateWords(str, n) {
+    var words = String(str || '').trim().split(/\s+/).filter(Boolean);
+    return words.slice(0, n).join(' ');
+  }
+
+  function werteChipsHtml(werte) {
+    return werte.map(function (w, i) {
+      return '<span class="dlm-chip dlm-chip-removable">' + esc(w) +
+        '<button type="button" class="dlm-chip-x" data-werte-remove="' + i + '" aria-label="Entfernen">&times;</button></span>';
+    }).join('');
+  }
+
+  /* Avatar-Visitenkarte (SPEC-Wunsch Schritt 4): Vorschau-Karte am Ende des Tabs, wird nach
+     jedem Autosave neu gerendert (refreshAvatarVisitenkarte), ohne das Formular neu aufzubauen. */
+  function renderAvatarVisitenkarte(p) {
+    var a = avatarOf(p);
+    var berufZeile = [a.alter ? (a.alter + ' Jahre') : '', a.beruf || ''].filter(Boolean).join(' · ');
+    return '<div class="dlm-avatar-visitenkarte" id="dlm-avatar-visitenkarte">' +
+      '<h3 class="dlm-subtitle" style="margin-top:0;">' + esc(T.avatarVisitenkarteTitel) + '</h3>' +
+      '<div class="dlm-avatar-visitenkarte-head">' + avatarPicHtml(p, 72) +
+      '<div><h3 class="dlm-title" style="margin:0;">' + esc(a.name || p.name) + '</h3>' +
+      (berufZeile ? '<p class="dlm-muted">' + esc(berufZeile) + '</p>' : '') +
+      (a.motto ? '<p class="dlm-avatar-motto">&raquo;' + esc(a.motto) + '&laquo;</p>' : '') +
+      '</div></div>' +
+      (arr(a.werte).length ? '<div class="dlm-chips">' + arr(a.werte).map(function (w) { return '<span class="dlm-chip">' + esc(w) + '</span>'; }).join('') + '</div>' : '') +
+      (a.kurzbeschreibung ? '<p class="dlm-avatar-kurz">' + esc(a.kurzbeschreibung) + '</p>' : '') +
+      '<div class="dlm-toolbar dlm-avatar-visitenkarte-actions">' + kampagneBauenBtn(p) + '</div>' +
+      '</div>';
+  }
+  function refreshAvatarVisitenkarte(p) {
+    var el = $('dlm-avatar-visitenkarte');
+    if (el) el.outerHTML = renderAvatarVisitenkarte(p);
+  }
+
+  /* Liest die aktuellen Formularwerte plus das lokale Werte-Array. */
+  function avatarFormValues(form, werte) {
+    return {
+      name: form.elements.name.value.trim(),
+      alter: form.elements.alter.value ? Number(form.elements.alter.value) : null,
+      beruf: form.elements.beruf.value.trim(),
+      kurzbeschreibung: form.elements.kurzbeschreibung.value,
+      werte: werte.slice(),
+      ziele: form.elements.ziele.value,
+      sorge: form.elements.sorge.value,
+      aussehen: form.elements.aussehen.value,
+      motto: form.elements.motto.value.trim()
+    };
+  }
+
+  /* Autosave des Profil-Formulars (SPEC-Wunsch Schritt 4): Avatar-Objekt vorher frisch aus der
+     DB laden und mergen, damit gerade erzeugte Bilder (bilder/gewaehlt/bild_prompt) nicht durch
+     ein PATCH aus einem aelteren Formularstand ueberschrieben werden. */
+  function saveAvatarForm(p, form, werte, hintEl) {
+    var fields = avatarFormValues(form, werte);
+    DB.get('me_projects?select=id,avatar&id=eq.' + p.id).then(function (rows) {
+      var fresh = rows && rows[0];
+      var freshAvatar = fresh ? avatarOf(fresh) : avatarOf(p);
+      var merged = Object.assign({}, freshAvatar, fields);
+      return DB.patch('me_projects?id=eq.' + p.id, { avatar: merged }).then(function () {
+        p.avatar = merged;
+        if (STATE.project && STATE.project.id === p.id) STATE.project.avatar = merged;
+        if (hintEl) hintEl.textContent = T.avatarGespeichert + ' ' + new Date().toLocaleTimeString('de-DE');
+        refreshAvatarVisitenkarte(p);
+      });
+    }).catch(function () { toast(T.genericError); });
+  }
+
+  function wireAvatarForm(body, p) {
+    var form = $('dlm-avatar-form');
+    if (!form) return;
+    var werte = arr(avatarOf(p).werte).slice();
+    var hint = $('dlm-avatar-savehint');
+    var debouncedSave = debounce(function () { saveAvatarForm(p, form, werte, hint); }, 800);
+
+    function rerenderChips() {
+      var box = $('dlm-avatar-werte-chips');
+      if (box) box.innerHTML = werteChipsHtml(werte);
+    }
+    function chipExists(val) {
+      return werte.map(function (w) { return w.toLowerCase(); }).indexOf(val.toLowerCase()) !== -1;
+    }
+
+    form.addEventListener('input', debouncedSave);
+    form.addEventListener('change', debouncedSave);
+    /* Verhindert ein Absenden des Formulars, wenn im Werte-Chip-Feld Enter gedrueckt wird. */
+    form.addEventListener('submit', function (e) { e.preventDefault(); });
+
+    var werteInput = $('dlm-avatar-werte-input');
+    if (werteInput) {
+      werteInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          var val = werteInput.value.replace(/,$/, '').trim();
+          werteInput.value = '';
+          if (val && !chipExists(val)) { werte.push(val); rerenderChips(); debouncedSave(); }
+        }
+      });
+    }
+    var chipsBox = $('dlm-avatar-werte-chips');
+    if (chipsBox) {
+      chipsBox.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-werte-remove]');
+        if (!btn) return;
+        werte.splice(Number(btn.getAttribute('data-werte-remove')), 1);
+        rerenderChips();
+        debouncedSave();
+      });
+    }
+    qsa('[data-werte-vorschlag]', body).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-werte-vorschlag');
+        if (!chipExists(val)) { werte.push(val); rerenderChips(); debouncedSave(); }
+      });
+    });
+
+    var uebBtn = $('dlm-avatar-uebernehmen');
+    if (uebBtn) {
+      uebBtn.addEventListener('click', function () {
+        var analyse = p.analyse || {};
+        var hinZuPunkte = arr(analyse.hin_zu && analyse.hin_zu.punkte);
+        var wegVonPunkte = arr(analyse.weg_von && analyse.weg_von.punkte);
+        var lf8Punkte = arr(analyse.life_force_8 && analyse.life_force_8.punkte);
+        lf8Punkte.slice(0, 4).map(function (t) { return truncateWords(t, 4); }).filter(Boolean).forEach(function (w) {
+          if (!chipExists(w)) werte.push(w);
+        });
+        rerenderChips();
+        if (!form.elements.ziele.value.trim() && hinZuPunkte.length) form.elements.ziele.value = hinZuPunkte.slice(0, 3).join('. ');
+        if (!form.elements.sorge.value.trim() && wegVonPunkte[0]) form.elements.sorge.value = wegVonPunkte[0];
+        uebBtn.hidden = true;
+        debouncedSave();
+      });
+    }
+  }
+
+  /* Tab Avatar (SPEC-Wunsch Schritt 4): links Bild-Bereich, rechts Profil-Formular,
+     unten die Avatar-Visitenkarte. Zweispaltig auf Desktop, per CSS untereinander auf Mobil. */
+  function renderAvatarTab(body, p) {
+    var a = avatarOf(p);
+    var werte = arr(a.werte);
+
+    var html = '<div class="dlm-avatar-tab-grid">' +
+      renderAvatarBildSpalte(p) +
+      '<div class="dlm-avatar-profilspalte">';
+    if (!werte.length && p.analyse) {
+      html += '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" id="dlm-avatar-uebernehmen">' + esc(T.avatarUebernehmen) + '</button></div>';
+    }
+    html += '<form id="dlm-avatar-form" class="dlm-form dlm-avatar-form">' +
+      '<label class="dlm-field"><span>' + esc(T.avatarLabelName) + '</span><input type="text" name="name" value="' + esc(a.name || '') + '" maxlength="120"></label>' +
+      '<label class="dlm-field"><span>' + esc(T.avatarLabelAlter) + '</span><input type="number" name="alter" min="0" max="120" value="' + esc(a.alter || '') + '"></label>' +
+      '<label class="dlm-field"><span>' + esc(T.avatarLabelBeruf) + '</span><input type="text" name="beruf" value="' + esc(a.beruf || '') + '" maxlength="160"></label>' +
+      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelKurz) + '</span><textarea name="kurzbeschreibung" rows="3" maxlength="600">' + esc(a.kurzbeschreibung || '') + '</textarea></label>' +
+      /* Bewusst ein <div> statt <label>: ein <label> mit mehreren verschachtelten
+         Buttons (Chips entfernen, Vorschlaege) wuerde bei jedem Klick zusaetzlich
+         einen synthetischen Klick an sein erstes labelfaehiges Kind weiterreichen
+         (Browser-Label-Aktivierungsverhalten) und so versehentlich einen zweiten
+         Chip entfernen. */
+      '<div class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelWerte) + '</span>' +
+      '<div class="dlm-chip-input">' +
+      '<div class="dlm-chips" id="dlm-avatar-werte-chips">' + werteChipsHtml(werte) + '</div>' +
+      '<input type="text" id="dlm-avatar-werte-input" placeholder="' + esc(T.avatarWertePh) + '" maxlength="40">' +
+      '</div>' +
+      '<div class="dlm-chips dlm-chips-vorschlaege">' + AVATAR_WERTE_VORSCHLAEGE.map(function (w) {
+        return '<button type="button" class="dlm-chip dlm-filter-chip" data-werte-vorschlag="' + esc(w) + '">' + esc(w) + '</button>';
+      }).join('') + '</div></div>' +
+      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelZiele) + '</span><textarea name="ziele" rows="3" maxlength="1000" placeholder="' + esc(T.avatarZielePh) + '">' + esc(a.ziele || '') + '</textarea></label>' +
+      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelSorge) + '</span><textarea name="sorge" rows="3" maxlength="1000">' + esc(a.sorge || '') + '</textarea></label>' +
+      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelAussehen) + '</span><textarea name="aussehen" rows="3" maxlength="1000" placeholder="' + esc(T.avatarAussehenPh) + '">' + esc(a.aussehen || '') + '</textarea></label>' +
+      '<label class="dlm-field"><span>' + esc(T.avatarLabelMotto) + '</span><input type="text" name="motto" value="' + esc(a.motto || '') + '" maxlength="200"></label>' +
+      '<p class="dlm-save-hint dlm-field-wide" id="dlm-avatar-savehint">&nbsp;</p>' +
+      '</form></div></div>';
+
+    html += renderAvatarVisitenkarte(p);
+    body.innerHTML = html;
+    wireAvatarForm(body, p);
   }
 
   function renderZielgruppeTab(body, p) {
@@ -1335,7 +1550,7 @@
       return;
     }
     var analyse = p.analyse;
-    var html = renderAvatarCard(p);
+    var html = renderAvatarZeile(p);
     html += '<div class="dlm-toolbar">' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="refine-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRefine) + '</button>' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="redo-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRedo) + '</button>' +

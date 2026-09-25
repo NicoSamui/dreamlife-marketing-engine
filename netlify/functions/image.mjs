@@ -170,10 +170,17 @@ async function handleAvatar(uid, body, key) {
   if (!project || project.uid !== uid) return jsonResp({ error: 'Kein Zugriff auf dieses Projekt.' }, 403);
 
   const avatar = (project.avatar && typeof project.avatar === 'object') ? project.avatar : {};
-  const bildPromptRoh = String(avatar.bild_prompt || '').trim();
-  if (!bildPromptRoh) return jsonResp({ error: 'Bitte zuerst die Zielgruppenanalyse erstellen.' }, 400);
+  // Ohne KI-Bildbeschreibung reicht auch ein vom Teilnehmer gepflegtes Profil (Schritt 4 "Avatar").
+  let bildPromptRoh = String(avatar.bild_prompt || '').trim();
+  const profilTeile = [];
+  if (avatar.alter) profilTeile.push(String(avatar.alter) + ' years old');
+  if (avatar.beruf) profilTeile.push('works as ' + String(avatar.beruf).slice(0, 80));
+  if (avatar.aussehen) profilTeile.push(String(avatar.aussehen).slice(0, 300));
+  if (!bildPromptRoh && profilTeile.length) bildPromptRoh = 'Portrait of a person, ' + profilTeile.join(', ');
+  else if (bildPromptRoh && profilTeile.length) bildPromptRoh += '. Keep consistent: ' + profilTeile.join(', ');
+  if (!bildPromptRoh) return jsonResp({ error: 'Bitte zuerst die Zielgruppenanalyse erstellen oder im Schritt Avatar Alter, Beruf und Aussehen eintragen.' }, 400);
 
-  const prompt = buildAvatarPrompt(bildPromptRoh, stil);
+  const prompt = buildAvatarPrompt(bildPromptRoh.slice(0, 1500), stil);
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
