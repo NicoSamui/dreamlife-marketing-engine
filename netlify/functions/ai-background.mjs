@@ -290,8 +290,12 @@ export default async (req) => {
     let assetsCtx = [];
     if (task === 'konsistenz' && campaign) {
       try {
-        const rows = await supa.select('me_assets', 'select=typ,titel,content&campaign_id=eq.' + campaign.id + '&status=eq.fertig&order=created_at.asc&limit=40');
-        assetsCtx = (Array.isArray(rows) ? rows : []).map((r) => {
+        // Nur die NEUESTE fertige Version je Asset-Typ pruefen: aeltere Entwuerfe desselben
+        // Typs sind keine Widersprueche der Kampagne, sondern verworfene Varianten.
+        const rows = await supa.select('me_assets', 'select=typ,titel,content,created_at&campaign_id=eq.' + campaign.id + '&status=eq.fertig&order=created_at.desc&limit=60');
+        const seen = new Set();
+        const neueste = (Array.isArray(rows) ? rows : []).filter((r) => { if (seen.has(r.typ)) return false; seen.add(r.typ); return true; });
+        assetsCtx = neueste.map((r) => {
           let inhalt = '';
           try { inhalt = JSON.stringify(r.content || {}); } catch (e) { inhalt = ''; }
           if (inhalt.length > 9000) inhalt = inhalt.slice(0, 9000) + ' ...[gekuerzt]';

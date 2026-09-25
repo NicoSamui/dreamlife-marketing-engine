@@ -313,3 +313,5 @@ html[data-mode="normal"] .dlm-dialog-scrim { background: rgba(20,20,23,.4); }
    Leerzustaende (Befund 8)
    --------------------------------------------------------------------- */
 .dlm-empty-block button { margin-top: 6px; }
+
+.dlm-cta-box { margin-top: 18px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--dl-panel-border); background: var(--dl-panel2); }

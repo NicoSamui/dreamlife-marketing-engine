@@ -1021,14 +1021,20 @@
     var seit = new Date(Date.now() - 30 * 60000).toISOString();
     DB.get('me_jobs?select=id,task,typ,fehler,project_id,campaign_id,updated_at&status=eq.fehler&updated_at=gt.' + encodeURIComponent(seit) + '&order=updated_at.desc&limit=5').then(function (jobs) {
       STATE.seenFailed = STATE.seenFailed || {};
-      arr(jobs).forEach(function (job) {
-        if (job.project_id !== projectId) return;
-        if (campaignId && job.campaign_id && job.campaign_id !== campaignId) return;
-        if (STATE.seenFailed[job.id]) return;
+      var neu = arr(jobs).filter(function (job) {
+        if (job.project_id !== projectId) return false;
+        if (campaignId && job.campaign_id && job.campaign_id !== campaignId) return false;
+        if (STATE.seenFailed[job.id]) return false;
         STATE.seenFailed[job.id] = true;
-        var was = job.task === 'winkel' ? 'Winkel-Erzeugung' : job.task === 'konsistenz' ? 'Konsistenz-Check' : job.task === 'asset' ? assetLabel(job.typ) : 'Zielgruppenanalyse';
-        toast(was + ' ist fehlgeschlagen: ' + (job.fehler || T.genericError) + ' Bitte starte sie noch einmal.');
+        return true;
       });
+      if (!neu.length) return;
+      var namen = [];
+      neu.forEach(function (job) {
+        var was = job.task === 'winkel' ? 'Winkel' : job.task === 'konsistenz' ? 'Konsistenz-Check' : job.task === 'asset' ? assetLabel(job.typ) : 'Zielgruppenanalyse';
+        if (namen.indexOf(was) < 0) namen.push(was);
+      });
+      toast((neu.length === 1 ? namen[0] + ' ist fehlgeschlagen: ' + (neu[0].fehler || T.genericError) : 'Einige Läufe sind fehlgeschlagen (' + namen.join(', ') + '): ' + (neu[0].fehler || T.genericError)) + ' Bitte starte sie noch einmal.');
     }).catch(function () {});
   }
 
@@ -1368,11 +1374,11 @@
     var sevCls = { hoch: 'dlm-chip-danger', mittel: 'dlm-chip-warn', niedrig: '' };
     var html = '<div class="dlm-konsistenz-card">' +
       '<div class="dlm-score-ring" style="--val:' + score + '"><span>' + score + '</span></div>' +
-      '<div class="dlm-konsistenz-body"><p>' + esc(k.fazit || 'Keine Zusammenfassung.') + '</p>' +
+      '<div class="dlm-konsistenz-body">' + mdMini(k.fazit || 'Keine Zusammenfassung.') +
       '<ul class="dlm-befunde">' + arr(k.befunde).map(function (b) {
         return '<li><span class="dlm-chip ' + (sevCls[b.schwere] || '') + '">' + esc(b.schwere || '') + '</span> ' +
           '<strong>' + esc(assetLabel(b.asset_typ)) + ':</strong> ' + esc(b.problem || '') + ' ' +
-          (b.vorschlag ? '<em>Vorschlag: ' + esc(b.vorschlag) + '</em>' : '') + '</li>';
+          (b.vorschlag ? '<em>Vorschlag: ' + inlineMd(b.vorschlag) + '</em>' : '') + '</li>';
       }).join('') + '</ul></div></div>';
     return html;
   }
@@ -1614,7 +1620,7 @@
         '<p class="dlm-muted">' + esc(m.preheader || '') + '</p>' +
         '<div>' + inlineMd(m.text || 'Nicht vorhanden') + '</div>' +
         '<span class="dlm-cta-badge">' + esc(m.cta || '') + '</span>' +
-        (m.ps ? '<p class="dlm-small">PS: ' + esc(m.ps) + '</p>' : '') +
+        (m.ps ? '<p class="dlm-small">PS: ' + inlineMd(m.ps) + '</p>' : '') +
         copyBtn([m.betreff_varianten && m.betreff_varianten[0], m.text, m.cta, m.ps].filter(Boolean).join('\n\n')) +
         '</div></div></div>';
     }).join('');
@@ -1643,19 +1649,19 @@
     var c = asset.content || {};
     var kapitel = arr(c.kapitel).map(function (k) { return (k && typeof k === 'object') ? k : { ueberschrift: '', text: String(k || '') }; });
     return '<div class="dlm-book">' +
-      '<div class="dlm-book-cover"><h2>' + esc(c.titel || 'Ohne Titel') + '</h2><p>' + esc(c.untertitel || '') + '</p><p class="dlm-muted">' + esc(c.versprechen || '') + '</p></div>' +
-      '<p>' + inlineMd(c.einleitung || '') + '</p>' +
+      '<div class="dlm-book-cover"><h2>' + esc(c.titel || 'Ohne Titel') + '</h2><p>' + inlineMd(c.untertitel || '') + '</p><p class="dlm-muted">' + inlineMd(c.versprechen || '') + '</p></div>' +
+      mdMini(c.einleitung) +
       kapitel.map(function (k, i) {
         k = k || {};
         var punkte = Array.isArray(k.punkte) ? k.punkte : [];
         return '<div class="dlm-chapter"><h4>' + (i + 1) + '. ' + esc(k.ueberschrift || '') + '</h4>' +
-          '<div>' + inlineMd(k.text || 'Nicht vorhanden') + '</div>' +
-          (punkte.length ? '<ul class="dlm-punkte">' + punkte.map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') +
+          '<div>' + mdMini(k.text) + '</div>' +
+          (punkte.length ? '<ul class="dlm-punkte">' + punkte.map(function (pt) { return '<li>' + inlineMd(pt) + '</li>'; }).join('') + '</ul>' : '') +
           '</div>';
       }).join('') +
-      (Array.isArray(c.checkliste) && c.checkliste.length ? '<h4>Checkliste</h4><ul class="dlm-punkte">' + c.checkliste.map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') +
-      '<p class="dlm-cta-badge">' + esc(c.abschluss_cta || '') + '</p>' +
-      (c.autor_box ? '<p class="dlm-muted">' + esc(c.autor_box) + '</p>' : '');
+      (Array.isArray(c.checkliste) && c.checkliste.length ? '<h4>Checkliste</h4><ul class="dlm-punkte">' + c.checkliste.map(function (pt) { return '<li>' + inlineMd(pt) + '</li>'; }).join('') + '</ul>' : '') +
+      (c.abschluss_cta ? '<div class="dlm-cta-box">' + mdMini(c.abschluss_cta) + '</div>' : '') +
+      (c.autor_box ? '<div class="dlm-muted">' + mdMini(c.autor_box) + '</div>' : '');
   }
 
   /* Nachfass ist ein Array von Objekten {zeitpunkt, kanal, ziel, text},
@@ -1690,7 +1696,7 @@
           '<p class="dlm-headline">' + esc(s.headline || '') + '</p><p>' + esc(s.subheadline || '') + '</p>' +
           abschnitte.map(function (a) { a = a || {}; return '<p><strong>' + esc(a.titel || '') + ':</strong> ' + esc(a.text || '') + '</p>'; }).join('') +
           '<span class="dlm-cta-badge">' + esc(s.cta || '') + '</span>' +
-          (s.hinweise ? '<p class="dlm-small">' + esc(s.hinweise) + '</p>' : '') +
+          (s.hinweise ? '<p class="dlm-small">' + inlineMd(s.hinweise) + '</p>' : '') +
           '</div></div>';
       }).join('') + '</div>' +
       renderNachfass(c.nachfass) +
@@ -1716,10 +1722,10 @@
       k = k || {};
       var punkte = Array.isArray(k.punkte) ? k.punkte : [];
       return '<section class="chapter"><h2>' + (i + 1) + '. ' + esc(k.ueberschrift || '') + '</h2>' + mdMini(k.text) +
-        (punkte.length ? '<ul>' + punkte.map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') + '</section>';
+        (punkte.length ? '<ul>' + punkte.map(function (pt) { return '<li>' + inlineMd(pt) + '</li>'; }).join('') + '</ul>' : '') + '</section>';
     }).join('');
     var checklisteHtml = (c.checkliste && c.checkliste.length)
-      ? '<section class="chapter"><h2>Checkliste</h2><ul class="checklist">' + c.checkliste.map(function (pt) { return '<li><span class="box"></span>' + esc(pt) + '</li>'; }).join('') + '</ul></section>'
+      ? '<section class="chapter"><h2>Checkliste</h2><ul class="checklist">' + c.checkliste.map(function (pt) { return '<li><span class="box"></span>' + inlineMd(pt) + '</li>'; }).join('') + '</ul></section>'
       : '';
     var html = '<!doctype html><html lang="de"><head><meta charset="utf-8"><title>' + esc(c.titel || 'Leadmagnet') + '</title>' +
       '<style>' +
@@ -1734,14 +1740,14 @@
       'ul.checklist{list-style:none;padding:0}' +
       'ul.checklist li{margin:8px 0;padding-left:26px;position:relative}' +
       'ul.checklist .box{position:absolute;left:0;top:2px;width:16px;height:16px;border:1.5px solid #333}' +
-      '.cta{margin-top:26px;padding:16px;border:1px solid #333;text-align:center;font-weight:bold}' +
+      '.cta{margin-top:26px;padding:16px;border:1px solid #333;text-align:center}.autor{margin-top:22px;font-size:11pt;color:#333}' +
       'footer{position:fixed;bottom:8mm;left:0;right:0;text-align:center;font-size:9pt;color:#666}' +
       '</style></head><body>' +
-      '<div class="cover"><h1>' + esc(c.titel || '') + '</h1><p>' + esc(c.untertitel || '') + '</p><p>' + esc(c.versprechen || '') + '</p></div>' +
+      '<div class="cover"><h1>' + esc(c.titel || '') + '</h1><p>' + inlineMd(c.untertitel || '') + '</p><p>' + inlineMd(c.versprechen || '') + '</p></div>' +
       '<section class="chapter">' + mdMini(c.einleitung) + '</section>' +
       kapitelHtml + checklisteHtml +
-      '<div class="cta">' + esc(c.abschluss_cta || '') + '</div>' +
-      (c.autor_box ? '<p>' + esc(c.autor_box) + '</p>' : '') +
+      (c.abschluss_cta ? '<div class="cta">' + mdMini(c.abschluss_cta) + '</div>' : '') +
+      (c.autor_box ? '<div class="autor">' + mdMini(c.autor_box) + '</div>' : '') +
       '<footer>' + esc(firma) + '</footer>' +
       '</body></html>';
     win.document.open(); win.document.write(html); win.document.close();
