@@ -36,7 +36,11 @@ async function streamText(opts) {
       description: "Liefert das fertige Ergebnis als JSON-Objekt genau nach dem im System-Prompt beschriebenen Schema.",
       input_schema: { type: "object", additionalProperties: true },
     }];
-    body.tool_choice = { type: "tool", name: "ergebnis" };
+    // Erzwungenes tool_choice ("tool"/"any") unterstuetzen neuere Modelle nicht mehr, deshalb
+    // "auto" plus klare Anweisung im System-Prompt. Antwortet das Modell doch als Text, greift
+    // unten der Text-Weg (extractJSON im Aufrufer).
+    body.tool_choice = { type: "auto" };
+    body.system = String(opts.system || "") + "\n\nAUSGABE: Rufe IMMER das Tool \"ergebnis\" auf und uebergib das komplette Ergebnis-JSON als dessen Eingabe. Kein Text davor oder danach.";
   }
   const payload = JSON.stringify(body);
 
