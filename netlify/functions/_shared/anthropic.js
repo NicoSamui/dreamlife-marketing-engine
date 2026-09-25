@@ -25,12 +25,21 @@ async function streamText(opts) {
   // garantiert gueltiges JSON (keine kaputten Anfuehrungszeichen oder Zeilenumbrueche in
   // Strings), auch bei sehr langen Ausgaben. Der Text kommt dann als input_json_delta.
   const json = opts.json !== false;
+  // Optionale Bilder (Creative-Decoder): werden als Content-Bloecke VOR dem Text-Block
+  // in die erste (und einzige) User-Nachricht gelegt, siehe Anthropic Messages API.
+  let userContent = opts.user;
+  if (Array.isArray(opts.images) && opts.images.length) {
+    userContent = opts.images
+      .filter((img) => img && img.media_type && img.data)
+      .map((img) => ({ type: "image", source: { type: "base64", media_type: img.media_type, data: img.data } }))
+      .concat([{ type: "text", text: opts.user }]);
+  }
   const body = {
     model: opts.model,
     max_tokens: opts.max_tokens,
     stream: true,
     system: opts.system,
-    messages: [{ role: "user", content: opts.user }],
+    messages: [{ role: "user", content: userContent }],
   };
   if (json) {
     body.tools = [{

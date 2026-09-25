@@ -178,7 +178,24 @@
     imgDownload: 'Herunterladen',
     genericError: 'Da ist etwas schiefgelaufen.',
     confirmDeleteAsset: 'Dieses Asset wirklich löschen?',
-    confirmDeleteProject: 'Dieses Projekt wirklich archivieren?'
+    confirmDeleteProject: 'Dieses Projekt wirklich archivieren?',
+    vorlagenNav: 'Creative-Vorlagen',
+    vorlagenTitle: 'Creative-Vorlagen',
+    vorlagenIntro: 'Lade ein Werbebild hoch, das dir gefällt. Die KI zerlegt Aufbau, Headline, Design und Wirkung und macht daraus eine Vorlage, nach der du eigene Creatives erzeugst.',
+    vorlagenDropText: 'Bild hierher ziehen oder klicken zum Auswählen',
+    vorlagenDropHint: 'JPG, PNG oder WebP',
+    vorlagenEmptyTitle: 'Noch keine Vorlage',
+    vorlagenEmptyText: 'Lade dein erstes Werbebild hoch, um eine Vorlage zu erstellen.',
+    vorlagenBadType: 'Nur JPG, PNG oder WebP sind erlaubt.',
+    vorlagenDecoding: 'Creative wird decodiert',
+    vorlagenDecodingHint: 'Das dauert etwa 1 Minute.',
+    vorlagenRedo: 'Neu decodieren',
+    vorlagenRetry: 'Erneut versuchen',
+    vorlagenConfirmDelete: 'Diese Vorlage wirklich löschen?',
+    vorlagenConfirmRedo: 'Die bestehende Analyse wird ersetzt. Fortfahren?',
+    vorlagenNotFound: 'Vorlage nicht gefunden.',
+    assetVorlage: 'Vorlage (optional)',
+    assetVorlageNone: 'Ohne Vorlage'
   };
 
   var STATUS_TEXTS = {
@@ -190,7 +207,8 @@
     ],
     winkel: ['Lese die Analyse', 'Sammle Ansatzpunkte', 'Formuliere Winkel', 'Prüfe auf Vielfalt', 'Ordne die Liste'],
     asset: ['Lese Analyse und Winkel', 'Baue die Struktur', 'Schreibe die Texte', 'Prüft Sprache und Länge', 'Speichert Ergebnis'],
-    konsistenz: ['Lese alle Assets der Kampagne', 'Vergleicht Tonalität', 'Prüft Widersprüche', 'Fasst zusammen']
+    konsistenz: ['Lese alle Assets der Kampagne', 'Vergleicht Tonalität', 'Prüft Widersprüche', 'Fasst zusammen'],
+    decode: ['Analysiert Aufbau und Blickführung', 'Liest Headline, Subline und CTA', 'Bestimmt Farben und Typografie', 'Fasst Psychologie und Wirkung zusammen']
   };
 
   /* Feste Reihenfolge und Anzeige-Labels nach SPEC §3 (Befund 2). Schluessel
@@ -258,6 +276,8 @@
     openAssetId: null,
     assetFilter: 'alle',
     winkelFilter: 'alle',
+    templates: null,
+    template: null,
     running: {}      /* key -> { controller, statusIdx, chars, timer } */
   };
 
@@ -290,7 +310,29 @@
     get: function (path) { return DB.request('GET', path); },
     post: function (path, body, prefer) { return DB.request('POST', path, body, prefer || 'return=representation'); },
     patch: function (path, body) { return DB.request('PATCH', path, body); },
-    del: function (path) { return DB.request('DELETE', path); }
+    del: function (path) { return DB.request('DELETE', path); },
+    /* Ruft eine Gateway-Aktion auf (z. B. upload_reference), statt des generischen
+       PostgREST-Durchgangs. Body-Felder werden neben {uid, op} mitgeschickt. */
+    op: function (op, extra) {
+      var uid = STATE.profile ? STATE.profile.uid : '';
+      var payload = Object.assign({ uid: uid, op: op }, extra || {});
+      return fetch('/.netlify/functions/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function (r) {
+        return r.text().then(function (txt) {
+          var json = null;
+          try { json = txt ? JSON.parse(txt) : null; } catch (e) { json = null; }
+          if (!r.ok || (json && json.error)) {
+            var msg = (json && (json.message || json.error)) || ('Fehler ' + r.status);
+            toast(String(msg));
+            throw new Error(String(msg));
+          }
+          return json;
+        });
+      });
+    }
   };
 
   /* ------------------------------------------------------------------
@@ -575,6 +617,13 @@
       var cname = STATE.campaign ? STATE.campaign.name : '...';
       parts.push({ label: cname, href: null });
     }
+    if (route.name === 'vorlagen' || route.name === 'vorlage-detail') {
+      parts.push({ label: T.vorlagenNav, href: route.name === 'vorlagen' ? null : '#/vorlagen' });
+    }
+    if (route.name === 'vorlage-detail') {
+      var tname = STATE.template ? STATE.template.name : '...';
+      parts.push({ label: tname, href: null });
+    }
     el.innerHTML = parts.map(function (p, i) {
       var sep = i > 0 ? '<span class="dlm-crumb-sep">&rsaquo;</span>' : '';
       if (p.href) return sep + '<a class="dlm-crumb" href="' + esc(p.href) + '">' + esc(p.label) + '</a>';
@@ -611,6 +660,9 @@
       route.projectId = parts[1];
       if (parts[2] === 'k' && parts[3]) { route.name = 'campaign'; route.campaignId = parts[3]; }
       else route.name = 'project';
+    } else if (parts[0] === 'vorlagen') {
+      if (parts[1]) { route.name = 'vorlage-detail'; route.templateId = parts[1]; }
+      else route.name = 'vorlagen';
     }
     return route;
   }
@@ -625,6 +677,8 @@
     if (r.name === 'projects') { STATE.project = null; STATE.campaign = null; renderCrumbs(r); renderProjectsView(); return; }
     if (r.name === 'project') { renderProjectRoute(r); return; }
     if (r.name === 'campaign') { renderCampaignRoute(r); return; }
+    if (r.name === 'vorlagen') { STATE.project = null; STATE.campaign = null; STATE.template = null; renderCrumbs(r); renderVorlagenView(); return; }
+    if (r.name === 'vorlage-detail') { renderVorlagenDetailRoute(r); return; }
   }
 
   /* ------------------------------------------------------------------
@@ -641,7 +695,10 @@
   function renderProjectsView() {
     var app = $('app');
     app.innerHTML = '<div class="dlm-wrap"><div class="dlm-head-row"><h1>' + esc(T.breadcrumbProjects) + '</h1>' +
-      '<button type="button" class="dlp-btn dlp-primary" data-action="new-project">' + esc(T.newProject) + '</button></div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+      '<a class="dlp-btn dlp-ghost" href="#/vorlagen">' + esc(T.vorlagenNav) + '</a>' +
+      '<button type="button" class="dlp-btn dlp-primary" data-action="new-project">' + esc(T.newProject) + '</button>' +
+      '</div></div>' +
       '<div id="dlm-projects-grid" class="dlm-grid dlm-projects-grid"><div class="dlm-loading">Lädt...</div></div></div>';
 
     DB.get('me_projects?select=*&archiviert=eq.false&order=updated_at.desc').then(function (rows) {
@@ -911,6 +968,7 @@
     if (kind === 'analyse') return 'Zielgruppenanalyse wird erstellt';
     if (kind === 'winkel') return 'Marketing-Winkel werden erzeugt';
     if (kind === 'konsistenz') return 'Konsistenz wird geprüft';
+    if (kind === 'decode') return T.vorlagenDecoding;
     if (kind.indexOf('asset-') === 0) return assetLabel(kind.slice(6)) + ' werden erzeugt';
     return 'Wird erzeugt';
   }
@@ -977,6 +1035,7 @@
     if (job.task === 'analyse' || job.task === 'verfeinern') return 'analyse';
     if (job.task === 'winkel') return 'winkel';
     if (job.task === 'konsistenz') return 'konsistenz';
+    if (job.task === 'decode') return 'decode';
     if (job.task === 'asset') return 'asset-' + job.typ;
     return job.task;
   }
@@ -985,6 +1044,7 @@
     if (kind === 'analyse') return 'analyse-' + job.project_id;
     if (kind === 'winkel') return 'winkel-' + job.project_id;
     if (kind === 'konsistenz') return 'konsistenz-' + job.campaign_id;
+    if (kind === 'decode') return 'decode-' + job.template_id;
     if (kind.indexOf('asset-') === 0) return 'asset-' + job.campaign_id + '-' + job.typ;
     return kind + '-' + job.id;
   }
@@ -1031,7 +1091,7 @@
       if (!neu.length) return;
       var namen = [];
       neu.forEach(function (job) {
-        var was = job.task === 'winkel' ? 'Winkel' : job.task === 'konsistenz' ? 'Konsistenz-Check' : job.task === 'asset' ? assetLabel(job.typ) : 'Zielgruppenanalyse';
+        var was = job.task === 'winkel' ? 'Winkel' : job.task === 'konsistenz' ? 'Konsistenz-Check' : job.task === 'asset' ? assetLabel(job.typ) : job.task === 'decode' ? 'Creative-Decoder' : 'Zielgruppenanalyse';
         if (namen.indexOf(was) < 0) namen.push(was);
       });
       toast((neu.length === 1 ? namen[0] + ' ist fehlgeschlagen: ' + (neu[0].fehler || T.genericError) : 'Einige Läufe sind fehlgeschlagen (' + namen.join(', ') + '): ' + (neu[0].fehler || T.genericError)) + ' Bitte starte sie noch einmal.');
@@ -1341,6 +1401,14 @@
     if (STATE.openAssetId) {
       var panel = $('dlm-asset-panel');
       if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var openedAsset = assets.filter(function (a) { return a.id === STATE.openAssetId; })[0];
+      if (openedAsset && openedAsset.template_id) {
+        DB.get('me_templates?select=id,name&id=eq.' + openedAsset.template_id).then(function (rows) {
+          var tpl = rows && rows[0];
+          var chip = $('dlm-asset-vorlage-chip');
+          if (chip && tpl) chip.textContent = 'Nach Vorlage: ' + (tpl.name || 'Vorlage');
+        }).catch(function () {});
+      }
     }
     ASSET_TYPES.forEach(function (t) {
       if (STATE.running['asset-' + c.id + '-' + t.typ]) startProgressRotation('asset-' + t.typ);
@@ -1411,7 +1479,12 @@
     }).join('');
     var body = document.createElement('div');
     body.innerHTML =
-      '<label class="dlm-field"><span>' + esc(T.assetFocusWinkel) + '</span><select id="dlm-gen-winkel"><option value="">Ueber alle Winkel verteilen</option>' + winkelOpts + '</select></label>' +
+      '<label class="dlm-field"><span>' + esc(T.assetFocusWinkel) + '</span><select id="dlm-gen-winkel"><option value="">Über alle Winkel verteilen</option>' + winkelOpts + '</select></label>' +
+      (typ === 'creative'
+        ? '<div class="dlm-vorlage-field"><label class="dlm-field"><span>' + esc(T.assetVorlage) + '</span>' +
+          '<select id="dlm-gen-vorlage"><option value="">' + esc(T.assetVorlageNone) + '</option></select></label>' +
+          '<div class="dlm-vorlage-preview" id="dlm-gen-vorlage-preview" hidden></div></div>'
+        : '') +
       '<label class="dlm-field"><span>' + esc(T.assetHint) + '</span><textarea id="dlm-gen-hint" rows="2"></textarea></label>';
     dialog({
       title: assetLabel(typ) + ' erzeugen',
@@ -1422,20 +1495,43 @@
           label: T.assetGenerate, primary: true, onClick: function (wrap) {
             var winkelId = qs('#dlm-gen-winkel', wrap).value;
             var hint = qs('#dlm-gen-hint', wrap).value;
-            startAssetGeneration(typ, winkelId, hint);
+            var vorlageSel = qs('#dlm-gen-vorlage', wrap);
+            startAssetGeneration(typ, winkelId, hint, vorlageSel ? vorlageSel.value : '');
           }
         }
       ]
     });
+    if (typ === 'creative') {
+      DB.get('me_templates?select=id,name,bild_url,status&status=eq.fertig&order=updated_at.desc').then(function (rows) {
+        var sel = qs('#dlm-gen-vorlage', body);
+        if (!sel) return;
+        arr(rows).forEach(function (t) {
+          var opt = document.createElement('option');
+          opt.value = t.id; opt.textContent = t.name || 'Vorlage';
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', function () {
+          var t = arr(rows).filter(function (x) { return x.id === sel.value; })[0];
+          var prev = qs('#dlm-gen-vorlage-preview', body);
+          if (!prev) return;
+          if (t) { prev.hidden = false; prev.innerHTML = '<img src="' + esc(t.bild_url) + '" alt="">' + '<span>' + esc(t.name || 'Vorlage') + '</span>'; }
+          else { prev.hidden = true; prev.innerHTML = ''; }
+        });
+      }).catch(function () {});
+    }
   }
 
-  function startAssetGeneration(typ, winkelId, hint) {
+  function startAssetGeneration(typ, winkelId, hint, templateId) {
     var c = STATE.campaign, p = STATE.project;
-    DB.post('me_assets', { project_id: p.id, campaign_id: c.id, typ: typ, status: 'laeuft', winkel_id: winkelId || null }, 'return=representation').then(function (rows) {
+    var assetBody = { project_id: p.id, campaign_id: c.id, typ: typ, status: 'laeuft', winkel_id: winkelId || null };
+    if (templateId) assetBody.template_id = templateId;
+    DB.post('me_assets', assetBody, 'return=representation').then(function (rows) {
       var asset = rows && rows[0];
       STATE.running['asset-' + c.id + '-' + typ] = { assetId: asset ? asset.id : null };
       renderCampaignRoute(parseHash());
-      var run = AI.run({ uid: STATE.profile.uid, task: 'asset', project_id: p.id, campaign_id: c.id, asset_id: asset ? asset.id : undefined, typ: typ, winkel_id: winkelId || undefined, hinweis: hint || undefined }, {
+      var payload = { uid: STATE.profile.uid, task: 'asset', project_id: p.id, campaign_id: c.id, asset_id: asset ? asset.id : undefined, typ: typ, winkel_id: winkelId || undefined, hinweis: hint || undefined };
+      if (templateId) payload.template_id = templateId;
+      var run = AI.run(payload, {
         onProgress: function (job) { updateProgressChars('asset-' + typ, job.chars || 0); }
       });
       STATE.running['asset-' + c.id + '-' + typ] = { assetId: asset ? asset.id : null, cancel: run.cancel };
@@ -1475,7 +1571,10 @@
      15) Asset-Panel: Rendering je Typ
      ------------------------------------------------------------------ */
   function renderAssetPanel(p, c, asset) {
-    var head = '<div class="dlm-asset-panel-head">' +
+    var vorlageChip = asset.template_id
+      ? '<a class="dlm-vorlage-chip" id="dlm-asset-vorlage-chip" href="#/vorlagen/' + esc(asset.template_id) + '">Nach Vorlage: ...</a>'
+      : '';
+    var head = vorlageChip + '<div class="dlm-asset-panel-head">' +
       '<h3>' + esc(asset.titel || assetLabel(asset.typ)) + '</h3>' +
       '<div class="dlm-panel-actions">' +
       (asset.typ === 'leadmagnet' && asset.status === 'fertig' ? '<button type="button" class="dlp-btn dlp-ghost" data-action="print-leadmagnet" data-id="' + esc(asset.id) + '">' + esc(T.assetPrint) + '</button>' : '') +
@@ -1769,6 +1868,394 @@
   }
 
   /* ------------------------------------------------------------------
+     15b) Ansicht: Creative-Vorlagen (Creative-Decoder, SPEC §10)
+     ------------------------------------------------------------------ */
+  var NEUE_VORLAGE_NAME = 'Neue Vorlage';
+
+  function templateStatusLabel(s) {
+    return s === 'fertig' ? T.statusFertig : (s === 'laeuft' ? T.statusLaeuft : (s === 'fehler' ? T.statusFehler : T.statusLeer));
+  }
+
+  /* Verkleinert eine Bilddatei im Browser auf max. 1600 px lange Kante und kodiert sie
+     als JPEG (Qualitaet 0.88), damit der Upload sicher unter dem Gateway-Limit bleibt.
+     Liefert die reinen Base64-Daten (ohne data:-Praefix). */
+  function resizeImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+        var maxEdge = 1600;
+        var scale = Math.min(1, maxEdge / Math.max(w, h));
+        var tw = Math.max(1, Math.round(w * scale)), th = Math.max(1, Math.round(h * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = tw; canvas.height = th;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, tw, th);
+        canvas.toBlob(function (blob) {
+          if (!blob) { reject(new Error('Bild konnte nicht verarbeitet werden.')); return; }
+          var reader = new FileReader();
+          reader.onload = function () {
+            var res = String(reader.result || '');
+            resolve(res.split(',')[1] || '');
+          };
+          reader.onerror = function () { reject(new Error('Bild konnte nicht gelesen werden.')); };
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.88);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Bild konnte nicht geladen werden.')); };
+      img.src = url;
+    });
+  }
+
+  function decodeProgressCardHtml(id) {
+    return '<div class="dlm-progress-card">' +
+      '<h3 class="dlm-progress-title">' + esc(T.vorlagenDecoding) + '</h3>' +
+      '<p class="dlm-progress-hint">' + esc(T.vorlagenDecodingHint) + '</p>' +
+      '<div class="dlm-progress-bar dlm-progress-indeterminate"><div class="dlm-progress-fill" id="dlm-decode-fill-' + esc(id) + '"></div></div>' +
+      '<p class="dlm-progress-status" id="dlm-decode-status-' + esc(id) + '">' + esc(STATUS_TEXTS.decode[0]) + '</p>' +
+      '<p class="dlm-progress-chars" id="dlm-decode-chars-' + esc(id) + '">0 Zeichen</p>' +
+      '</div>';
+  }
+  function updateDecodeChars(id, n) {
+    var el = $('dlm-decode-chars-' + id);
+    if (el) el.textContent = n + ' Zeichen';
+    var fill = $('dlm-decode-fill-' + id);
+    if (fill) fill.style.width = Math.min(96, 8 + n / 80) + '%';
+  }
+  function startDecodeStatusRotation(id) {
+    var idx = 0;
+    var timer = setInterval(function () {
+      idx = (idx + 1) % STATUS_TEXTS.decode.length;
+      var e = $('dlm-decode-status-' + id);
+      if (e) e.textContent = STATUS_TEXTS.decode[idx]; else clearInterval(timer);
+    }, 6000);
+    STATE.running['decode-rot-' + id] = timer;
+  }
+  function stopDecodeStatusRotation(id) {
+    if (STATE.running['decode-rot-' + id]) { clearInterval(STATE.running['decode-rot-' + id]); delete STATE.running['decode-rot-' + id]; }
+  }
+
+  function rerenderVorlagenCurrent() {
+    var r = parseHash();
+    if (r.name === 'vorlagen') renderVorlagenView();
+    else if (r.name === 'vorlage-detail') renderVorlagenDetailRoute(r);
+  }
+
+  function startDecode(templateId) {
+    STATE.running['decode-' + templateId] = { pending: true };
+    rerenderVorlagenCurrent();
+    startDecodeStatusRotation(templateId);
+    var run = AI.run({ uid: STATE.profile.uid, task: 'decode', template_id: templateId }, {
+      onProgress: function (job) { updateDecodeChars(templateId, job.chars || 0); }
+    });
+    STATE.running['decode-' + templateId] = { cancel: run.cancel };
+    run.promise.then(function () {
+      delete STATE.running['decode-' + templateId];
+      stopDecodeStatusRotation(templateId);
+      rerenderVorlagenCurrent();
+    }).catch(function (err) {
+      delete STATE.running['decode-' + templateId];
+      stopDecodeStatusRotation(templateId);
+      toast(err && err.message ? err.message : T.genericError);
+      rerenderVorlagenCurrent();
+    });
+  }
+
+  function startTemplateUpload(file) {
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { toast(T.vorlagenBadType); return; }
+    resizeImageFile(file).then(function (b64) {
+      return DB.op('upload_reference', { b64: b64 });
+    }).then(function (res) {
+      var url = res && res.url;
+      if (!url) throw new Error(T.genericError);
+      return DB.post('me_templates', { name: NEUE_VORLAGE_NAME, bild_url: url, status: 'leer' }, 'return=representation');
+    }).then(function (rows) {
+      var tpl = rows && rows[0];
+      if (!tpl) throw new Error(T.genericError);
+      renderVorlagenView();
+      startDecode(tpl.id);
+    }).catch(function (err) {
+      toast(err && err.message ? err.message : T.genericError);
+    });
+  }
+
+  function wireDropzone() {
+    var zone = $('dlm-dropzone');
+    var input = $('dlm-template-file');
+    if (!zone || !input) return;
+    zone.addEventListener('click', function () { input.click(); });
+    zone.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+    input.addEventListener('change', function () {
+      var f = input.files && input.files[0];
+      input.value = '';
+      if (f) startTemplateUpload(f);
+    });
+    ['dragover', 'dragenter'].forEach(function (evt) {
+      zone.addEventListener(evt, function (e) { e.preventDefault(); zone.classList.add('dlm-dropzone-over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (evt) {
+      zone.addEventListener(evt, function (e) { e.preventDefault(); zone.classList.remove('dlm-dropzone-over'); });
+    });
+    zone.addEventListener('drop', function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) startTemplateUpload(f);
+    });
+  }
+
+  /* Haengt sich an laufende decode-Jobs wieder an (Neuladen der Seite waehrend ein
+     Hintergrund-Lauf noch geht) und meldet fehlgeschlagene Laeufe der letzten 30 Minuten
+     einmal pro Sitzung, analog resumeRunningJobs fuer Projekte/Kampagnen. */
+  function resumeTemplateJobs(rerender) {
+    DB.get('me_jobs?select=*&status=in.(wartet,laeuft)&order=created_at.desc&limit=20').then(function (jobs) {
+      arr(jobs).forEach(function (job) {
+        if (job.task !== 'decode' || !job.template_id) return;
+        var key = 'decode-' + job.template_id;
+        if (STATE.running[key]) return;
+        startDecodeStatusRotation(job.template_id);
+        var poll = pollJob(job.id, function (j) { updateDecodeChars(job.template_id, j.chars || 0); });
+        STATE.running[key] = { cancel: poll.cancel };
+        poll.promise.then(function () {
+          delete STATE.running[key];
+          stopDecodeStatusRotation(job.template_id);
+          rerender();
+        }).catch(function (err) {
+          delete STATE.running[key];
+          stopDecodeStatusRotation(job.template_id);
+          toast(err && err.message ? err.message : T.genericError);
+          rerender();
+        });
+      });
+    }).catch(function () {});
+    var seit = new Date(Date.now() - 30 * 60000).toISOString();
+    DB.get('me_jobs?select=id,task,template_id,fehler,updated_at&status=eq.fehler&task=eq.decode&updated_at=gt.' + encodeURIComponent(seit) + '&order=updated_at.desc&limit=5').then(function (jobs) {
+      STATE.seenFailed = STATE.seenFailed || {};
+      arr(jobs).forEach(function (job) {
+        if (STATE.seenFailed[job.id]) return;
+        STATE.seenFailed[job.id] = true;
+        toast('Creative-Decoder ist fehlgeschlagen: ' + (job.fehler || T.genericError));
+      });
+    }).catch(function () {});
+  }
+
+  function templateCardHtml(t) {
+    var running = !!STATE.running['decode-' + t.id];
+    var status = running ? 'laeuft' : t.status;
+    return '<div class="dlp-card dlm-template-card" data-open-template="' + esc(t.id) + '">' +
+      '<div class="dlm-card-menu"><button type="button" class="dlm-icon-btn" data-action="template-menu" data-id="' + esc(t.id) + '" aria-label="Menü">' +
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button></div>' +
+      '<div class="dlm-template-thumb">' + (t.bild_url ? '<img src="' + esc(t.bild_url) + '" alt="">' : '') + '</div>' +
+      '<h4>' + esc(t.name || NEUE_VORLAGE_NAME) + '</h4>' +
+      '<div class="dlm-chips"><span class="dlm-chip ' + statusChipCls(status) + '">' + esc(templateStatusLabel(status)) + '</span></div>' +
+      (status === 'laeuft' ? decodeProgressCardHtml(t.id) : '') +
+      '<p class="dlm-small">' + esc(fmtDate(t.updated_at)) + '</p>' +
+      '</div>';
+  }
+
+  function renderVorlagenView() {
+    var app = $('app');
+    app.innerHTML = '<div class="dlm-wrap">' +
+      '<h1 class="dlm-title">' + esc(T.vorlagenTitle) + '</h1>' +
+      '<p class="dlm-vorlagen-intro">' + esc(T.vorlagenIntro) + '</p>' +
+      '<div class="dlm-dropzone" id="dlm-dropzone" tabindex="0" role="button" aria-label="Bild hochladen">' +
+      ICONS.bild.replace('width="20" height="20"', 'width="30" height="30" class="dlm-dropzone-icon"') +
+      '<p><strong>' + esc(T.vorlagenDropText) + '</strong></p>' +
+      '<p class="dlm-small">' + esc(T.vorlagenDropHint) + '</p>' +
+      '<input type="file" id="dlm-template-file" accept="image/jpeg,image/png,image/webp">' +
+      '</div>' +
+      '<div id="dlm-templates-grid" class="dlm-grid"><div class="dlm-loading">Lädt...</div></div>' +
+      '</div>';
+
+    wireDropzone();
+
+    DB.get('me_templates?select=*&order=updated_at.desc').then(function (rows) {
+      STATE.templates = rows || [];
+      var grid = $('dlm-templates-grid');
+      if (!grid) return;
+      if (!STATE.templates.length) {
+        grid.innerHTML = '<div class="dlm-empty-block"><h3>' + esc(T.vorlagenEmptyTitle) + '</h3><p>' + esc(T.vorlagenEmptyText) + '</p></div>';
+        return;
+      }
+      grid.innerHTML = STATE.templates.map(templateCardHtml).join('');
+    }).catch(function () {
+      var grid = $('dlm-templates-grid');
+      if (grid) grid.innerHTML = '<div class="dlm-empty">' + esc(T.genericError) + '</div>';
+    });
+
+    resumeTemplateJobs(function () { renderVorlagenView(); });
+  }
+
+  function openTemplateMenu(id) {
+    var t = arr(STATE.templates).filter(function (x) { return x.id === id; })[0];
+    dialog({
+      title: t ? t.name : 'Vorlage',
+      body: '<label class="dlm-field"><span>' + esc(T.rename) + '</span><input type="text" id="dlm-template-rename-input" value="' + esc(t ? t.name : '') + '"></label>',
+      actions: [
+        { label: T.cancel },
+        {
+          label: T.delete, onClick: function () {
+            confirmDialog(T.vorlagenConfirmDelete, function () {
+              DB.del('me_templates?id=eq.' + id).then(function () { renderVorlagenView(); });
+            });
+            return false;
+          }
+        },
+        {
+          label: T.save, primary: true, onClick: function () {
+            var name = qs('#dlm-template-rename-input').value.trim();
+            if (!name) return false;
+            DB.patch('me_templates?id=eq.' + id, { name: name }).then(function () { renderVorlagenView(); });
+          }
+        }
+      ]
+    });
+  }
+
+  function renderVorlagenDetailRoute(r) {
+    var app = $('app');
+    app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
+    DB.get('me_templates?select=*&id=eq.' + r.templateId).then(function (rows) {
+      var t = rows && rows[0];
+      if (!t) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.vorlagenNotFound) + '</div></div>'; return; }
+      STATE.template = t;
+      renderCrumbs(r);
+      renderTemplateDetailBody(t);
+      resumeTemplateJobs(function () { renderVorlagenDetailRoute(parseHash()); });
+    }).catch(function () {
+      app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
+    });
+  }
+
+  /* Rendert eine decode-Kategorie als lesbaren Block (kein JSON), robust gegen
+     fehlende Felder ("Nicht vorhanden"), analog zu renderAssetPanel je Typ. */
+  function renderTemplateDecode(d) {
+    d = d || {};
+    var aufbau = d.aufbau || {};
+    var headline = d.headline || {};
+    var subline = d.subline || {};
+    var cta = d.cta || {};
+    var typografie = d.typografie || {};
+    var bildstil = d.bildstil || {};
+    var psychologie = d.psychologie || {};
+    var copyFormeln = d.copy_formeln || {};
+
+    var html = '';
+    html += '<div><h3 class="dlm-subtitle-sm">Format</h3><p>' + esc(d.format || 'Nicht vorhanden') + '</p></div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Aufbau</h3>' + mdMini(aufbau.beschreibung) +
+      (aufbau.blickfuehrung ? '<p class="dlm-muted"><strong>Blickführung:</strong> ' + esc(aufbau.blickfuehrung) + '</p>' : '') +
+      '<div class="dlm-zone-list">' + arr(aufbau.zonen).map(function (z) {
+        z = z || {};
+        var pct = Math.max(0, Math.min(100, Number(z.flaeche_prozent) || 0));
+        return '<div class="dlm-zone-row"><span>' + esc(z.element || 'Element') + '</span>' +
+          '<span class="dlm-zone-bar"><span class="dlm-zone-bar-fill" style="width:' + pct + '%"></span></span>' +
+          '<span class="dlm-small">' + pct + '% · ' + esc(z.position || '') + (z.ausrichtung ? ' · ' + esc(z.ausrichtung) : '') + '</span></div>';
+      }).join('') + '</div></div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Headline</h3><p class="dlm-headline">' + esc(headline.text || 'Nicht vorhanden') + '</p>' +
+      '<div class="dlm-chips">' + (headline.typ ? '<span class="dlm-chip">' + esc(headline.typ) + '</span>' : '') +
+      (headline.hebel ? '<span class="dlm-chip">' + esc(headline.hebel) + '</span>' : '') +
+      (headline.woerter ? '<span class="dlm-chip">' + esc(headline.woerter) + ' Wörter</span>' : '') + '</div>' +
+      (headline.formel ? '<div class="dlm-formel-box">' + esc(headline.formel) + '</div>' + copyBtn(headline.formel) : '') + '</div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Subline</h3><p>' + esc(subline.text || 'Nicht vorhanden') + '</p>' +
+      (subline.formel ? '<div class="dlm-formel-box">' + esc(subline.formel) + '</div>' + copyBtn(subline.formel) : '') + '</div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">CTA</h3><p>' + esc(cta.text || 'Nicht vorhanden') + '</p>' +
+      '<div class="dlm-chips">' + (cta.form ? '<span class="dlm-chip">' + esc(cta.form) + '</span>' : '') + (cta.position ? '<span class="dlm-chip">' + esc(cta.position) + '</span>' : '') + '</div>' +
+      (cta.formel ? '<div class="dlm-formel-box">' + esc(cta.formel) + '</div>' + copyBtn(cta.formel) : '') + '</div>';
+
+    if (arr(d.weitere_texte).length) {
+      html += '<div><h3 class="dlm-subtitle-sm">Weitere Texte</h3><ul class="dlm-punkte">' +
+        arr(d.weitere_texte).map(function (w) { w = w || {}; return '<li><strong>' + esc(w.rolle || '') + ':</strong> ' + esc(w.text || '') + '</li>'; }).join('') +
+        '</ul></div>';
+    }
+
+    var typoLines = ['stil', 'gewicht', 'schreibweise', 'groessenverhaeltnis', 'hervorhebung', 'farbe_kontrast']
+      .filter(function (k) { return typografie[k]; })
+      .map(function (k) { return '<li>' + esc(k.replace(/_/g, ' ')) + ': ' + esc(typografie[k]) + '</li>'; }).join('');
+    html += '<div><h3 class="dlm-subtitle-sm">Typografie</h3><ul class="dlm-punkte">' + (typoLines || '<li>Nicht vorhanden.</li>') + '</ul></div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Farben</h3><div class="dlm-swatch-row">' + arr(d.farben).map(function (f) {
+      f = f || {};
+      var hex = f.hex || '#000000';
+      return '<button type="button" class="dlm-swatch" data-copy="' + encodeURIComponent(hex) + '">' +
+        '<span class="dlm-swatch-dot" style="background:' + esc(hex) + '"></span>' +
+        '<span class="dlm-swatch-hex">' + esc(hex) + '</span><span class="dlm-small">' + esc(f.rolle || '') + '</span></button>';
+    }).join('') + '</div></div>';
+
+    var stilLines = ['art', 'szene', 'person', 'licht', 'perspektive', 'stimmung', 'look']
+      .filter(function (k) { return bildstil[k]; })
+      .map(function (k) { return '<li>' + esc(k) + ': ' + esc(bildstil[k]) + '</li>'; }).join('');
+    html += '<div><h3 class="dlm-subtitle-sm">Bildstil</h3><ul class="dlm-punkte">' + (stilLines || '<li>Nicht vorhanden.</li>') + '</ul></div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Psychologie</h3><div class="dlm-chips">' +
+      [psychologie.emotion, psychologie.awareness, psychologie.treiber, psychologie.scroll_stopper]
+        .filter(Boolean).map(function (v) { return '<span class="dlm-chip">' + esc(v) + '</span>'; }).join('') + '</div></div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Warum es wirkt</h3>' + mdMini(d.warum_wirkt) + '</div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Regeln</h3><ul class="dlm-checklist">' +
+      (arr(d.regeln).map(function (rg) { return '<li>' + esc(rg) + '</li>'; }).join('') || '<li>Nicht vorhanden.</li>') + '</ul></div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Stil-Prompt</h3><div class="dlm-formel-box dlm-mono">' + esc(d.stil_prompt || 'Nicht vorhanden') + '</div>' + copyBtn(d.stil_prompt) + '</div>';
+
+    html += '<div><h3 class="dlm-subtitle-sm">Copy-Formeln</h3>' +
+      '<p><strong>Headline:</strong> ' + esc(copyFormeln.headline || 'Nicht vorhanden') + '</p>' +
+      '<p><strong>Subline:</strong> ' + esc(copyFormeln.subline || 'Nicht vorhanden') + '</p>' +
+      '<p><strong>CTA:</strong> ' + esc(copyFormeln.cta || 'Nicht vorhanden') + '</p>' +
+      (copyFormeln.anleitung ? '<p>' + esc(copyFormeln.anleitung) + '</p>' : '') +
+      copyBtn([copyFormeln.headline, copyFormeln.subline, copyFormeln.cta, copyFormeln.anleitung].filter(Boolean).join('\n\n')) + '</div>';
+
+    return html;
+  }
+
+  function renderTemplateDetailBody(t) {
+    var app = $('app');
+    var running = !!STATE.running['decode-' + t.id];
+    var status = running ? 'laeuft' : t.status;
+    var body;
+    if (status === 'laeuft') {
+      body = decodeProgressCardHtml(t.id);
+    } else if (status === 'fehler') {
+      body = '<div class="dlm-empty dlm-chip-danger-bg">Fehler: ' + esc(t.fehler || T.genericError) + '</div>' +
+        '<button type="button" class="dlp-btn dlp-primary" data-action="redo-decode" data-id="' + esc(t.id) + '">' + esc(T.vorlagenRetry) + '</button>';
+    } else if (status === 'fertig' && t.decode) {
+      body = renderTemplateDecode(t.decode);
+    } else {
+      body = '<div class="dlm-empty">Nicht vorhanden.</div>';
+    }
+
+    var html = '<div class="dlm-wrap">' +
+      '<div class="dlm-head-row"><div style="flex:1 1 auto;min-width:200px;">' +
+      '<input type="text" id="dlm-template-name" class="dlm-title" maxlength="120" ' +
+      'style="background:transparent;border:0;color:inherit;font:inherit;width:100%;padding:0;" value="' + esc(t.name || '') + '">' +
+      '</div><div class="dlm-panel-actions">' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="redo-decode" data-id="' + esc(t.id) + '">' + esc(T.vorlagenRedo) + '</button>' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="delete-template" data-id="' + esc(t.id) + '">' + esc(T.delete) + '</button>' +
+      '</div></div>' +
+      '<div class="dlm-template-detail">' +
+      '<div class="dlm-template-detail-img">' + (t.bild_url ? '<img src="' + esc(t.bild_url) + '" alt="">' : '') + '</div>' +
+      '<div class="dlm-template-detail-body">' + body + '</div>' +
+      '</div></div>';
+    app.innerHTML = html;
+
+    var nameInput = $('dlm-template-name');
+    if (nameInput) {
+      nameInput.addEventListener('change', function () {
+        var name = nameInput.value.trim() || NEUE_VORLAGE_NAME;
+        DB.patch('me_templates?id=eq.' + t.id, { name: name }).then(function () { t.name = name; STATE.template.name = name; });
+      });
+    }
+  }
+
+  function deleteTemplate(id) {
+    DB.del('me_templates?id=eq.' + id).then(function () { location.hash = '#/vorlagen'; });
+  }
+
+  /* ------------------------------------------------------------------
      16) Event-Delegation
      ------------------------------------------------------------------ */
   function wireGlobalEvents() {
@@ -1954,6 +2441,26 @@
       var genImgBtn = t.closest('[data-action="gen-image"]');
       if (genImgBtn) {
         generateImage(genImgBtn.getAttribute('data-asset'), genImgBtn.getAttribute('data-variant'), genImgBtn.getAttribute('data-format'));
+        return;
+      }
+
+      var openTemplate = t.closest('[data-open-template]');
+      if (openTemplate) { location.hash = '#/vorlagen/' + openTemplate.getAttribute('data-open-template'); return; }
+
+      var templateMenuBtn = t.closest('[data-action="template-menu"]');
+      if (templateMenuBtn) { e.stopPropagation(); openTemplateMenu(templateMenuBtn.getAttribute('data-id')); return; }
+
+      var redoDecodeBtn = t.closest('[data-action="redo-decode"]');
+      if (redoDecodeBtn) {
+        var rdId = redoDecodeBtn.getAttribute('data-id');
+        confirmDialog(T.vorlagenConfirmRedo, function () { startDecode(rdId); });
+        return;
+      }
+
+      var delTemplateBtn = t.closest('[data-action="delete-template"]');
+      if (delTemplateBtn) {
+        var dtId = delTemplateBtn.getAttribute('data-id');
+        confirmDialog(T.vorlagenConfirmDelete, function () { deleteTemplate(dtId); });
         return;
       }
     });

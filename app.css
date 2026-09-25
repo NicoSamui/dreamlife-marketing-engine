@@ -24,6 +24,9 @@ a { color: var(--dl-accent); }
 .dlm-crumb-current { color: var(--dl-ink); }
 .dlm-crumb-sep { color: var(--dl-muted); opacity: .6; }
 .dlm-hello { color: var(--dl-muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.dlm-nav-link { color: var(--dl-muted); font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap; margin: 0 12px; }
+.dlm-nav-link:hover { color: var(--dl-ink); }
+@media (max-width: 640px) { .dlm-nav-link { display: none; } }
 
 /* ---------------------------------------------------------------------
    Layout
@@ -315,3 +318,53 @@ html[data-mode="normal"] .dlm-dialog-scrim { background: rgba(20,20,23,.4); }
 .dlm-empty-block button { margin-top: 6px; }
 
 .dlm-cta-box { margin-top: 18px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--dl-panel-border); background: var(--dl-panel2); }
+
+/* ---------------------------------------------------------------------
+   Creative-Vorlagen (Creative-Decoder)
+   --------------------------------------------------------------------- */
+.dlm-vorlagen-intro { max-width: 720px; margin: 0 0 18px; color: var(--dl-muted); }
+.dlm-dropzone {
+  border: 1.5px dashed var(--dl-panel-border); border-radius: var(--radius); padding: 30px 20px;
+  text-align: center; color: var(--dl-muted); cursor: pointer; margin-bottom: 22px; transition: border-color .15s ease, color .15s ease;
+}
+.dlm-dropzone:hover, .dlm-dropzone-over { border-color: var(--dl-accent); color: var(--dl-ink); }
+.dlm-dropzone input { display: none; }
+.dlm-dropzone-icon { color: var(--dl-accent); margin-bottom: 8px; }
+
+.dlm-template-card { display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
+.dlm-template-thumb { width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: var(--dl-bar-track); display: grid; place-items: center; color: var(--dl-muted); }
+.dlm-template-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.dlm-template-detail { display: grid; grid-template-columns: minmax(240px, 380px) 1fr; gap: 26px; align-items: start; }
+.dlm-template-detail-img { border-radius: var(--radius); overflow: hidden; background: var(--dl-bar-track); position: sticky; top: 76px; }
+.dlm-template-detail-img img { width: 100%; display: block; }
+.dlm-template-detail-body { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+@media (max-width: 800px) {
+  .dlm-template-detail { grid-template-columns: 1fr; }
+  .dlm-template-detail-img { position: static; }
+}
+
+.dlm-zone-list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.dlm-zone-row { display: grid; grid-template-columns: 1fr 3fr auto; gap: 10px; align-items: center; font-size: 13px; }
+.dlm-zone-bar { height: 8px; border-radius: 6px; background: var(--dl-bar-track); overflow: hidden; }
+.dlm-zone-bar-fill { height: 100%; background: var(--dl-accent-grad); }
+
+.dlm-formel-box { font-family: var(--dl-font-mono); font-size: 12.5px; padding: 10px 12px; border-radius: 10px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+
+.dlm-swatch-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.dlm-swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; border: 0; background: none; font: inherit; color: var(--dl-muted); }
+.dlm-swatch-dot { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--dl-panel-border); }
+.dlm-swatch-hex { font-family: var(--dl-font-mono); font-size: 10.5px; }
+
+.dlm-checklist { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.dlm-checklist li { display: flex; align-items: flex-start; gap: 8px; }
+.dlm-checklist li::before { content: "\2713"; color: var(--dl-pos); font-weight: 700; flex: 0 0 auto; }
+
+.dlm-vorlage-field { margin: 4px 0 14px; }
+.dlm-vorlage-preview { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; color: var(--dl-muted); }
+.dlm-vorlage-preview img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; }
+.dlm-vorlage-chip { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 6px 12px; border-radius: 20px; background: var(--dl-badge-bg); color: var(--dl-badge-fg); font-size: 12px; font-weight: 700; text-decoration: none; }
+/* 1.1.0 Nachbesserung: Balken sichtbar, Vorlagen-Name als Ueberschrift */
+.dlm-zone-bar, .dlm-zone-bar-fill { display: block; }
+input.dlm-title#dlm-template-name { font-family: var(--dl-font-head); font-size: 26px; font-weight: 600; color: var(--dl-ink); background: transparent; border: 1px solid transparent; border-radius: 10px; padding: 4px 8px; margin-left: -8px; width: min(100%, 640px); }
+input.dlm-title#dlm-template-name:hover, input.dlm-title#dlm-template-name:focus { border-color: var(--dl-panel-border); outline: none; background: var(--dl-panel); }

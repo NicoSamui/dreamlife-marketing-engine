@@ -32,6 +32,7 @@ const MAX_TOKENS = {
   winkel: 24000,
   asset: 28000,
   konsistenz: 14000,
+  decode: 16000,
 };
 
 const TEMPERATURE = {
@@ -235,6 +236,31 @@ const FUNNEL_SCHEMA = `Gib GENAU dieses JSON-Objekt zurueck:
 }
 Waehle den Funnel-Typ passend zum Angebot und begruende ihn kurz (Eric Steigner). "nachfass" hat 6 bis 10 Eintraege als Objekte.`;
 
+const DECODE_SCHEMA = `Gib GENAU dieses JSON-Objekt zurueck:
+{
+  "name_vorschlag": "string",
+  "format": "string (z. B. 1:1, 4:5, 9:16 oder anderes)",
+  "aufbau": {
+    "beschreibung": "string",
+    "blickfuehrung": "string",
+    "zonen": [ { "element": "string", "position": "string", "flaeche_prozent": 20, "ausrichtung": "string" } ]
+  },
+  "headline": { "text": "string", "typ": "string", "formel": "string", "woerter": 6, "hebel": "string" },
+  "subline": { "text": "string", "formel": "string" },
+  "cta": { "text": "string", "form": "string", "position": "string", "formel": "string" },
+  "weitere_texte": [ { "text": "string", "rolle": "string" } ],
+  "typografie": { "stil": "string", "gewicht": "string", "schreibweise": "string", "groessenverhaeltnis": "string", "hervorhebung": "string", "farbe_kontrast": "string" },
+  "farben": [ { "hex": "string", "rolle": "string" } ],
+  "bildstil": { "art": "string", "szene": "string", "person": "string", "licht": "string", "perspektive": "string", "stimmung": "string", "look": "string" },
+  "psychologie": { "emotion": "string", "awareness": "string", "treiber": "string", "scroll_stopper": "string" },
+  "warum_wirkt": "string",
+  "stil_prompt": "string (englisch, 80 bis 160 Woerter, mit Platzhaltern in eckigen Klammern)",
+  "copy_formeln": { "headline": "string", "subline": "string", "cta": "string", "anleitung": "string" },
+  "regeln": ["string", "..."]
+}
+"zonen" hat 3 bis 8 Eintraege, "farben" 3 bis 6 Eintraege, "regeln" 4 bis 8 Eintraege. Alles ausser
+"stil_prompt" auf Deutsch, in einfacher Sprache, ohne lange Gedankenstriche.`;
+
 const KONSISTENZ_SCHEMA = `Gib GENAU dieses JSON-Objekt zurueck:
 {
   "score": 80,
@@ -257,6 +283,7 @@ const SCHEMAS = {
   leadmagnet: LEADMAGNET_SCHEMA,
   funnel: FUNNEL_SCHEMA,
   konsistenz: KONSISTENZ_SCHEMA,
+  decode: DECODE_SCHEMA,
 };
 
 function moduleAndSchemaFor(task, ctx) {
@@ -268,6 +295,9 @@ function moduleAndSchemaFor(task, ctx) {
   }
   if (task === "konsistenz") {
     return { moduleKey: "konsistenz", schemaKey: "konsistenz" };
+  }
+  if (task === "decode") {
+    return { moduleKey: "decoder", schemaKey: "decode" };
   }
   if (task === "asset") {
     const typ = ctx && ctx.typ;
@@ -293,6 +323,12 @@ function briefFields(brief) {
 
 // Baut das User-Kontextobjekt (vor dem Kuerzen) fuer eine Aufgabe.
 function buildUserContext(task, ctx) {
+  // decode hat keinen Brief/Projekt-Bezug (siehe SPEC §10): nur die Aufgabe und der
+  // aktuelle Name der Vorlage gehen in den User-Kontext.
+  if (task === "decode") {
+    return { aufgabe: "Zerlege das beigefügte Werbebild nach der Anweisung.", vorlagen_name: (ctx.template && ctx.template.name) || "" };
+  }
+
   const project = ctx.project || {};
   const userCtx = { brief: briefFields(project.brief) };
 
@@ -337,6 +373,13 @@ function buildUserContext(task, ctx) {
     if (ctx.hinweis) userCtx.hinweis = ctx.hinweis;
     if (ctx.anzahl) {
       userCtx.anzahl_hinweis = "Wunsch des Teilnehmers zur Anzahl: " + ctx.anzahl + ". Halte dich sonst an die Vorgabe im Schema.";
+    }
+    if (ctx.template && ctx.typ === "creative") {
+      userCtx.vorlage = { name: ctx.template.name, decode: ctx.template.decode };
+      userCtx.vorlage_anweisung = "Baue ALLE Varianten exakt nach dieser Vorlage: gleicher Aufbau, gleiche " +
+        "Headline-, Subline- und CTA-Formeln (Platzhalter mit Inhalten aus Analyse, Winkeln und Angebot fuellen), " +
+        "gleiche Regeln. Der bild_prompt jeder Variante MUSS auf dem stil_prompt der Vorlage basieren, Platzhalter " +
+        "durch passende Szenen dieser Zielgruppe ersetzt. bild_text folgt der Headline-Formel.";
     }
     return userCtx;
   }
@@ -427,6 +470,24 @@ const JSON_SCHEMAS = {
     befunde: { type: "array", items: S.obj({ asset_typ: S.str, problem: S.str, vorschlag: S.str, schwere: { type: "string", enum: ["hoch", "mittel", "niedrig"] } }) },
     fazit: S.str,
   }),
+  decode: S.obj({
+    name_vorschlag: S.str, format: S.str,
+    aufbau: S.obj({
+      beschreibung: S.str, blickfuehrung: S.str,
+      zonen: { type: "array", items: S.obj({ element: S.str, position: S.str, flaeche_prozent: { type: "number" }, ausrichtung: S.str }) },
+    }),
+    headline: S.obj({ text: S.str, typ: S.str, formel: S.str, woerter: { type: "integer" }, hebel: S.str }),
+    subline: S.obj({ text: S.str, formel: S.str }),
+    cta: S.obj({ text: S.str, form: S.str, position: S.str, formel: S.str }),
+    weitere_texte: { type: "array", items: S.obj({ text: S.str, rolle: S.str }) },
+    typografie: S.obj({ stil: S.str, gewicht: S.str, schreibweise: S.str, groessenverhaeltnis: S.str, hervorhebung: S.str, farbe_kontrast: S.str }),
+    farben: { type: "array", items: S.obj({ hex: S.str, rolle: S.str }) },
+    bildstil: S.obj({ art: S.str, szene: S.str, person: S.str, licht: S.str, perspektive: S.str, stimmung: S.str, look: S.str }),
+    psychologie: S.obj({ emotion: S.str, awareness: S.str, treiber: S.str, scroll_stopper: S.str }),
+    warum_wirkt: S.str, stil_prompt: S.str,
+    copy_formeln: S.obj({ headline: S.str, subline: S.str, cta: S.str, anleitung: S.str }),
+    regeln: S.strArr,
+  }, ["name_vorschlag", "format", "aufbau", "headline", "subline", "cta", "typografie", "farben", "bildstil", "psychologie", "warum_wirkt", "stil_prompt", "copy_formeln", "regeln"]),
 };
 
 // ctx = { project, campaign, asset, typ, winkel, winkel_id, profile, hinweis, mehr, anzahl }

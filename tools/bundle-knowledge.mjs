@@ -19,7 +19,7 @@ const OUT_FILE = path.join(__dirname, "..", "netlify", "functions", "_shared", "
 // Reihenfolge und Namen exakt nach §6 der Spezifikation (Dateiname ohne .md = Schluessel).
 const KEYS = [
   "basis", "zielgruppe", "winkel", "creatives", "reels", "social",
-  "olg", "emails", "vsl", "leadmagnet", "funnel", "konsistenz",
+  "olg", "emails", "vsl", "leadmagnet", "funnel", "konsistenz", "decoder",
 ];
 
 function main() {

@@ -27,7 +27,13 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-const VALID_TASKS = ['analyse', 'verfeinern', 'winkel', 'asset', 'konsistenz'];
+const VALID_TASKS = ['analyse', 'verfeinern', 'winkel', 'asset', 'konsistenz', 'decode'];
+// Eigene Storage-Praefix-URL fuer Referenzbilder des Creative-Decoders (siehe db.js
+// upload_reference). Nur Bilder aus diesem Bucket-Pfad duerfen dekodiert werden, damit
+// niemand eine beliebige fremde Bild-URL an Anthropic schicken kann.
+function refPrefix() {
+  return String(process.env.SUPABASE_URL || '').replace(/\/+$/, '') + '/storage/v1/object/public/me-creatives/ref/';
+}
 
 function cleanId(v) {
   v = (v == null ? '' : '' + v).trim();
@@ -48,6 +54,8 @@ async function markJobFehler(jobId, task, ctx, message) {
       await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse_status: 'fehler' });
     } else if (task === 'asset' && ctx.asset) {
       await supa.patch('me_assets', { id: 'eq.' + ctx.asset.id }, { status: 'fehler', fehler: String(message || '').slice(0, 500) });
+    } else if (task === 'decode' && ctx.template) {
+      await supa.patch('me_templates', { id: 'eq.' + ctx.template.id }, { status: 'fehler', fehler: String(message || '').slice(0, 500) });
     }
   } catch (e) {}
 }
@@ -74,10 +82,15 @@ export default async (req) => {
   const hinweis = body.hinweis ? String(body.hinweis).trim().slice(0, 4000) : '';
   const mehr = !!body.mehr;
   const anzahl = Number.isFinite(body.anzahl) ? body.anzahl : null;
+  const template_id = cleanId(body.template_id);
 
   if (!uid) return jsonResp({ error: 'Kein Nutzer erkannt. Bitte über Learning Suite öffnen.' }, 401);
   if (!VALID_TASKS.includes(task)) return jsonResp({ error: 'Unbekannte Aufgabe.' }, 400);
-  if (!project_id) return jsonResp({ error: 'Kein Projekt angegeben.' }, 400);
+  if (task === 'decode') {
+    if (!template_id) return jsonResp({ error: 'Keine Vorlage angegeben.' }, 400);
+  } else if (!project_id) {
+    return jsonResp({ error: 'Kein Projekt angegeben.' }, 400);
+  }
 
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return jsonResp({ error: 'KI ist noch nicht konfiguriert (ANTHROPIC_API_KEY fehlt im Backend).' }, 503);
@@ -87,6 +100,54 @@ export default async (req) => {
     defaults: { ipPerHour: 40, uidPerDay: 60, globalPerDay: 1500 },
   });
   if (!g.ok) return jsonResp({ error: g.error }, g.status);
+
+  // ---- Decode: Vorlage serverseitig laden, uid und eigene Storage-URL pruefen ----
+  if (task === 'decode') {
+    let template;
+    try {
+      template = await supa.getOne('me_templates', { id: 'eq.' + template_id });
+    } catch (e) {
+      return jsonResp({ error: 'Vorlage konnte nicht geladen werden.' }, 502);
+    }
+    if (!template || template.uid !== uid) return jsonResp({ error: 'Kein Zugriff auf diese Vorlage.' }, 403);
+    const bildUrl = String(template.bild_url || '');
+    if (bildUrl.indexOf(refPrefix()) !== 0) {
+      return jsonResp({ error: 'Ungueltige Bild-URL fuer diese Vorlage.' }, 400);
+    }
+
+    let job;
+    try {
+      job = await supa.insert('me_jobs', {
+        uid, task: 'decode', typ: null,
+        project_id: null, campaign_id: null, asset_id: null, template_id,
+        status: 'wartet', chars: 0, teil_fertig: 0, teile: 1,
+      });
+    } catch (e) {
+      return jsonResp({ error: 'Job konnte nicht angelegt werden.' }, 502);
+    }
+    if (!job || !job.id) return jsonResp({ error: 'Job konnte nicht angelegt werden.' }, 502);
+
+    try {
+      await supa.patch('me_templates', { id: 'eq.' + template_id }, { status: 'laeuft', fehler: null });
+    } catch (e) { /* nicht abbruchwuerdig */ }
+
+    const base = process.env.URL || '';
+    try {
+      const res = await fetch(base + '/.netlify/functions/ai-background', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-me-internal': internalToken(job.id) },
+        body: JSON.stringify({ job_id: job.id }),
+      });
+      if (!res || (res.status !== 202 && !res.ok)) {
+        await markJobFehler(job.id, task, { template }, 'Die Hintergrund-Verarbeitung konnte nicht gestartet werden.');
+        return jsonResp({ error: 'Die Hintergrund-Verarbeitung konnte nicht gestartet werden.' }, 502);
+      }
+    } catch (e) {
+      await markJobFehler(job.id, task, { template }, 'Die Hintergrund-Verarbeitung konnte nicht erreicht werden.');
+      return jsonResp({ error: 'Die Hintergrund-Verarbeitung konnte nicht erreicht werden.' }, 502);
+    }
+    return jsonResp({ job_id: job.id }, 200);
+  }
 
   // ---- Projekt/Kampagne/Asset serverseitig laden und die uid pruefen ----
   let project;
@@ -125,6 +186,18 @@ export default async (req) => {
     typ = asset.typ;
   }
 
+  // ---- Vorlage fuer ein Bild-Creative (optional): serverseitig laden, uid und Status pruefen ----
+  let template = null;
+  if (task === 'asset' && template_id && typ === 'creative') {
+    try {
+      template = await supa.getOne('me_templates', { id: 'eq.' + template_id });
+    } catch (e) {
+      return jsonResp({ error: 'Vorlage konnte nicht geladen werden.' }, 502);
+    }
+    if (!template || template.uid !== uid) return jsonResp({ error: 'Kein Zugriff auf diese Vorlage.' }, 403);
+    if (template.status !== 'fertig') return jsonResp({ error: 'Vorlage ist noch nicht fertig.' }, 400);
+  }
+
   // ---- Job anlegen ----
   const istAnalyse = task === 'analyse' || task === 'verfeinern';
   let job;
@@ -132,6 +205,7 @@ export default async (req) => {
     job = await supa.insert('me_jobs', {
       uid, task, typ: typ || null,
       project_id, campaign_id: campaign_id || null, asset_id: asset_id || null,
+      template_id: template ? template.id : null,
       status: 'wartet',
       chars: 0, teil_fertig: 0, teile: istAnalyse ? 4 : 1,
     });
@@ -147,7 +221,9 @@ export default async (req) => {
     if (istAnalyse) {
       await supa.patch('me_projects', { id: 'eq.' + project_id }, { analyse_status: 'laeuft' });
     } else if (task === 'asset' && asset) {
-      await supa.patch('me_assets', { id: 'eq.' + asset.id }, { status: 'laeuft', fehler: null });
+      const patchBody = { status: 'laeuft', fehler: null };
+      if (template) patchBody.template_id = template.id;
+      await supa.patch('me_assets', { id: 'eq.' + asset.id }, patchBody);
     }
   } catch (e) { /* nicht abbruchwuerdig, die Job-Zeile bleibt die Wahrheit */ }
 

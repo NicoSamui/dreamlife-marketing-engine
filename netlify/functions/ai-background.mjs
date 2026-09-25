@@ -27,6 +27,30 @@ const MODEL = process.env.MODEL || 'claude-opus-5-5';
 const CORS = { 'Content-Type': 'application/json' };
 const CHARS_MIN_DELTA = 1500;
 const CHARS_MIN_INTERVAL_MS = 2000;
+const MAX_REF_IMAGE_BYTES = 5 * 1024 * 1024;
+const NEUE_VORLAGE_NAME = 'Neue Vorlage';
+
+// Holt das Referenzbild einer Creative-Vorlage (Creative-Decoder), maximal 5 MB, muss ein
+// Bild sein (Content-Type image/*). Liefert media_type + Base64-Daten fuer Anthropic.
+async function fetchReferenceImage(url) {
+  // Nur Bilder aus dem eigenen Speicher (Schutz, falls bild_url nachtraeglich geaendert wurde).
+  const prefix = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '') + '/storage/v1/object/public/me-creatives/ref/';
+  if (process.env.SUPABASE_URL && (String(url || '').indexOf(prefix) !== 0 || /\.\./.test(String(url)))) {
+    throw new Error('Das Referenzbild liegt nicht im erlaubten Speicher.');
+  }
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (e) {
+    throw new Error('Das Referenzbild konnte nicht geladen werden.');
+  }
+  if (!res || !res.ok) throw new Error('Das Referenzbild konnte nicht geladen werden.');
+  const ct = String(res.headers.get('content-type') || '').split(';')[0].trim();
+  if (!/^image\//i.test(ct)) throw new Error('Das Referenzbild hat keinen gueltigen Bildtyp.');
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!buf.length || buf.length > MAX_REF_IMAGE_BYTES) throw new Error('Das Referenzbild ist zu gross.');
+  return { media_type: ct, data: buf.toString('base64') };
+}
 
 function cleanId(v) {
   v = (v == null ? '' : '' + v).trim();
@@ -87,6 +111,17 @@ async function saveResult(task, parsed, ctx) {
     return { konsistenz: parsed };
   }
 
+  if (realTask === 'decode') {
+    const patchBody = { decode: parsed, status: 'fertig', fehler: null, updated_at: nowIso };
+    // Der eigene Name wird nur ersetzt, wenn der Teilnehmer die Vorlage noch nicht
+    // umbenannt hat (Standardname "Neue Vorlage"), damit ein eigener Name nie ueberschrieben wird.
+    if ((ctx.template.name || NEUE_VORLAGE_NAME) === NEUE_VORLAGE_NAME && parsed && parsed.name_vorschlag) {
+      patchBody.name = String(parsed.name_vorschlag).slice(0, 120);
+    }
+    await supa.patch('me_templates', { id: 'eq.' + ctx.template.id }, patchBody);
+    return { ok: true };
+  }
+
   throw new Error('Unbekannte Aufgabe beim Speichern: ' + task);
 }
 
@@ -99,6 +134,8 @@ async function saveError(task, ctx, message) {
       await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse_status: 'fehler' });
     } else if (realTask === 'asset' && ctx.asset) {
       await supa.patch('me_assets', { id: 'eq.' + ctx.asset.id }, { status: 'fehler', fehler: msg });
+    } else if (realTask === 'decode' && ctx.template) {
+      await supa.patch('me_templates', { id: 'eq.' + ctx.template.id }, { status: 'fehler', fehler: msg });
     }
   } catch (e) {
     console.error('ai-background.mjs saveError fehlgeschlagen', e && e.message);
@@ -252,10 +289,20 @@ export default async (req) => {
   let project = null, campaign = null, asset = null;
   const ctx = { hinweis: body.hinweis, mehr: !!body.mehr, winkel_id: body.winkel_id, anzahl: body.anzahl };
 
+  let template = null;
+
   try {
-    project = await supa.getOne('me_projects', { id: 'eq.' + job.project_id });
-    if (!project || project.uid !== uid) throw new Error('Kein Zugriff auf dieses Projekt.');
-    ctx.project = project;
+    if (job.project_id) {
+      project = await supa.getOne('me_projects', { id: 'eq.' + job.project_id });
+      if (!project || project.uid !== uid) throw new Error('Kein Zugriff auf dieses Projekt.');
+      ctx.project = project;
+    }
+
+    if (job.template_id) {
+      template = await supa.getOne('me_templates', { id: 'eq.' + job.template_id });
+      if (!template || template.uid !== uid) throw new Error('Kein Zugriff auf diese Vorlage.');
+      ctx.template = template;
+    }
 
     if (job.campaign_id) {
       campaign = await supa.getOne('me_campaigns', { id: 'eq.' + job.campaign_id });
@@ -304,17 +351,29 @@ export default async (req) => {
       } catch (e) { console.warn('Assets fuer Konsistenz nicht ladbar', e && e.message); }
     }
 
-    let saveCtx = { project, campaign, asset, uid, typ, mehr: ctx.mehr };
+    let saveCtx = { project, campaign, asset, template, uid, typ, mehr: ctx.mehr };
     let jobResult;
 
     if (task === 'analyse' || task === 'verfeinern') {
       const merged = await runAnalyseParts(job, ctx, key, reportChars);
       await saveResult(task, merged, saveCtx);
       jobResult = { ok: true };
+    } else if (task === 'decode') {
+      const image = await fetchReferenceImage(template.bild_url);
+      const promptData = prompts.buildPrompt('decode', { template });
+      const fullText = await streamText({
+        key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens,
+        schema: promptData.input_schema, images: [image],
+        onDelta: (_delta, total) => reportChars(total),
+      });
+      reportChars(fullText.length, true);
+      let parsed = textHelpers.extractJSON(fullText);
+      parsed = textHelpers.deepStripDashes(parsed);
+      jobResult = await saveResult('decode', parsed, saveCtx);
     } else {
       const promptData = prompts.buildPrompt(task, {
         project, campaign, asset, typ, winkel: ctx.winkel, winkel_id: ctx.winkel_id,
-        profile, hinweis: ctx.hinweis, mehr: ctx.mehr, anzahl: ctx.anzahl, assets: assetsCtx,
+        profile, hinweis: ctx.hinweis, mehr: ctx.mehr, anzahl: ctx.anzahl, assets: assetsCtx, template,
       });
       const fullText = await streamText({
         key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
@@ -338,4 +397,4 @@ export default async (req) => {
   }
 };
 
-export const _test = { extractTitel, saveResult, saveError, cleanId, makeCharsReporter, runAnalyseParts };
+export const _test = { extractTitel, saveResult, saveError, cleanId, makeCharsReporter, runAnalyseParts, fetchReferenceImage };
