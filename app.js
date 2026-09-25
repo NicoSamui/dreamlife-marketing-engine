@@ -28,7 +28,7 @@
   /* Minimaler Markdown-Renderer: Absaetze, Zeilenumbrueche, **fett**, "- " Listen. */
   function mdMini(raw) {
     if (!raw) return '<p class="dlm-empty-txt">Nicht vorhanden.</p>';
-    var text = String(raw).replace(/\r\n/g, '\n');
+    var text = String(raw).replace(/\\r\\n|\\n/g, '\n').replace(/\r\n/g, '\n');
     var blocks = text.split(/\n{2,}/);
     var out = blocks.map(function (block) {
       var lines = block.split('\n').filter(function (l) { return l.length; });

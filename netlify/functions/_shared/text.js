@@ -40,7 +40,9 @@ function stripDashes(str) {
 
 // Wendet stripDashes rekursiv auf alle Strings in einem Objekt/Array an.
 function deepStripDashes(value) {
-  if (typeof value === "string") return stripDashes(value);
+  // Zusaetzlich: doppelt maskierte Zeilenumbrueche ("\\n" als Text) in echte umwandeln,
+  // das Modell liefert sie im Tool-JSON gelegentlich so.
+  if (typeof value === "string") return stripDashes(value.replace(/\\r\\n|\\n/g, "\n").replace(/\\t/g, " "));
   if (Array.isArray(value)) return value.map(deepStripDashes);
   if (value && typeof value === "object") {
     const out = {};
