@@ -1,34 +1,27 @@
-// Dreamlife Marketing Engine, KI-Function (Netlify Function 2.0, STREAMING NDJSON)
+// Dreamlife Marketing Engine, KI-Function (Netlify Function 2.0, STARTER, synchron)
 //
-// Warum Streaming? Die Zielgruppenanalyse braucht bis zu einigen Minuten. Eine normale
-// Netlify-Function wird nach ~10s abgebrochen. Wir oeffnen die Antwort deshalb sofort
-// und schicken alle 2s einen Heartbeat sowie zwischendurch den bereits erzeugten Text,
-// damit das UI Fortschritt zeigen kann (gleiches Muster wie image.mjs).
-//
-// Protokoll (NDJSON, eine JSON-Zeile pro Ereignis):
-//   {"type":"start"}
-//   {"type":"ping"}                         (alle 2s)
-//   {"type":"delta","text":"..."}           (neu erzeugter Text, alle ~400 Zeichen)
-//   {"type":"done","result":{...}}
-//   {"type":"error","message":"..."}
+// Warum ein Starter statt Streaming? Netlify bricht eine streamende Function nach
+// ungefaehr 60 Sekunden ab. Die Zielgruppenanalyse (bis zu 14000 Tokens) und grosse
+// Assets brauchen laenger. Diese Function prueft alles wie bisher, legt dann nur eine
+// Job-Zeile in me_jobs an und stoesst die Background-Function ai-background.mjs an
+// (Netlify laesst Background-Functions bis zu 15 Minuten laufen). Der Browser bekommt
+// sofort { job_id } zurueck und pollt den Fortschritt ueber das Gateway (me_jobs).
 //
 // Sicherheit: Projekt/Kampagne/Asset werden HIER serverseitig aus Supabase geladen und
-// gegen die uid geprueft (nicht dem Browser vertraut). Prompts liegen nur in _shared/
-// (prompts.js, knowledge.js), der Browser schickt nur task, IDs und kurze Nutzereingaben.
+// gegen die uid geprueft (nicht dem Browser vertraut), genau wie zuvor. Die eigentliche
+// KI-Arbeit und das Speichern des Ergebnisses passieren in ai-background.mjs, die den
+// Job anhand seiner uid erneut serverseitig laedt.
 //
 // Aufruf: POST /.netlify/functions/ai
 //   {uid, task, project_id, campaign_id?, asset_id?, typ?, winkel_id?, hinweis?, mehr?, anzahl?}
 // task: analyse | verfeinern (= analyse mit Hinweis) | winkel | asset | konsistenz
+// Antwort: {"job_id": "..."} (200) oder {"error": "..."} (4xx/5xx)
 
 import aiGuard from './_shared/ai-guard.js';
 import supa from './_shared/supa.js';
-import textHelpers from './_shared/text.js';
-import prompts from './_shared/prompts.js';
 import scopedDb from './_shared/scoped-db.js';
+import { internalToken } from './_shared/internal.js';
 
-const MODEL = process.env.MODEL || 'claude-opus-5-5';
-const ANTHROPIC_VERSION = '2023-06-01';
-const DELTA_CHUNK = 400;
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -46,94 +39,17 @@ function jsonResp(obj, status) {
   return new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
-// Ermittelt einen kurzen, lesbaren Titel fuer ein Asset aus dem erzeugten Inhalt.
-function extractTitel(typ, parsed) {
+// Legt den Job serverseitig fehl (bester Versuch, Fehler beim Aufraeumen sind kein Grund
+// fuer eine kaputte Antwort an den Browser).
+async function markJobFehler(jobId, task, ctx, message) {
+  try { await supa.patch('me_jobs', { id: 'eq.' + jobId }, { status: 'fehler', fehler: String(message || '').slice(0, 500) }); } catch (e) {}
   try {
-    if (typ === 'creative') return (parsed.varianten && parsed.varianten[0] && parsed.varianten[0].headline) || 'Bild-Creatives';
-    if (typ === 'reel') return (parsed.skripte && parsed.skripte[0] && parsed.skripte[0].titel) || 'Reel-Skripte';
-    if (typ === 'caption') return 'Social-Media-Captions';
-    if (typ === 'olg') return 'Beitraege fuer organische Lead-Generierung';
-    if (typ === 'email') return parsed.sequenz_name || 'E-Mail-Sequenz';
-    if (typ === 'vsl') return parsed.titel || 'VSL-Skript';
-    if (typ === 'leadmagnet') return parsed.titel || 'Leadmagnet';
-    if (typ === 'funnel') return parsed.funnel_typ || 'Funnel-Blueprint';
-  } catch (e) { /* Fallback unten */ }
-  return 'Asset';
-}
-
-// Speichert das fertige Ergebnis serverseitig an der richtigen Stelle (§4.2 der Spezifikation).
-async function saveResult(task, parsed, ctx) {
-  const realTask = task === 'verfeinern' ? 'analyse' : task;
-  const nowIso = new Date().toISOString();
-
-  if (realTask === 'analyse') {
-    await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, {
-      analyse: parsed, analyse_status: 'fertig', updated_at: nowIso,
-    });
-    return { analyse: parsed };
-  }
-
-  if (realTask === 'winkel') {
-    const neu = Array.isArray(parsed.winkel) ? parsed.winkel : [];
-    let out = neu;
-    if (ctx.mehr && Array.isArray(ctx.project.winkel) && ctx.project.winkel.length) {
-      out = ctx.project.winkel.concat(neu);
-    }
-    await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { winkel: out, updated_at: nowIso });
-    return { winkel: out };
-  }
-
-  if (realTask === 'asset') {
-    const titel = extractTitel(ctx.typ, parsed);
-    await supa.patch('me_assets', { id: 'eq.' + ctx.asset.id }, {
-      content: parsed, titel, status: 'fertig', fehler: null, updated_at: nowIso,
-    });
-    return { content: parsed, titel };
-  }
-
-  if (realTask === 'konsistenz') {
-    await supa.patch('me_campaigns', { id: 'eq.' + ctx.campaign.id }, { konsistenz: parsed, updated_at: nowIso });
-    return { konsistenz: parsed };
-  }
-
-  throw new Error('Unbekannte Aufgabe beim Speichern: ' + task);
-}
-
-// Setzt bei einem Fehler den passenden Status, damit das UI ihn anzeigen kann.
-async function saveError(task, ctx, message) {
-  const realTask = task === 'verfeinern' ? 'analyse' : task;
-  const msg = String(message || 'Unbekannter Fehler.').slice(0, 500);
-  try {
-    if (realTask === 'analyse' && ctx.project) {
+    if ((task === 'analyse' || task === 'verfeinern') && ctx.project) {
       await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse_status: 'fehler' });
-    } else if (realTask === 'asset' && ctx.asset) {
-      await supa.patch('me_assets', { id: 'eq.' + ctx.asset.id }, { status: 'fehler', fehler: msg });
+    } else if (task === 'asset' && ctx.asset) {
+      await supa.patch('me_assets', { id: 'eq.' + ctx.asset.id }, { status: 'fehler', fehler: String(message || '').slice(0, 500) });
     }
-    // winkel/konsistenz haben kein eigenes Fehler-Statusfeld, der Fehler geht nur an den Client.
-  } catch (e) {
-    console.error('ai.mjs saveError fehlgeschlagen', e && e.message);
-  }
-}
-
-// Kurzer Profilblock aus ls_members (nie E-Mail, Telefon oder uid).
-function profileBlock(m) {
-  if (!m || typeof m !== 'object') return null;
-  const parts = [];
-  if (m.first_name) parts.push('Vorname: ' + m.first_name);
-  if (m.dienstleistung) parts.push('Dienstleistung laut LearningSuite: ' + m.dienstleistung);
-  if (m.methode) parts.push('Methode: ' + m.methode);
-  if (m.zielgruppe_branche) parts.push('Zielgruppe/Branche: ' + m.zielgruppe_branche);
-  if (m.angebotssatz) parts.push('Angebotssatz: ' + m.angebotssatz);
-  if (!parts.length) return null;
-  return 'Profil des Teilnehmers (Hintergrund, der Brief hat Vorrang): ' + parts.join('. ').slice(0, 1500);
-}
-
-async function callAnthropicOnce(key, payload) {
-  return fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': key, 'anthropic-version': ANTHROPIC_VERSION, 'content-type': 'application/json' },
-    body: payload,
-  });
+  } catch (e) {}
 }
 
 export default async (req) => {
@@ -209,136 +125,50 @@ export default async (req) => {
     typ = asset.typ;
   }
 
-  // gewaehlte Winkel der Kampagne (fuer asset/konsistenz)
-  let winkelListe = [];
-  if (campaign && Array.isArray(project.winkel)) {
-    const ids = new Set((campaign.winkel_ids || []).map(String));
-    winkelListe = project.winkel.filter((w) => w && ids.has(String(w.id)));
-  }
-
-  // Teilnehmer-Profil optional aus ls_members lesen (wird NIE vom Browser geschickt).
-  let profile = null;
+  // ---- Job anlegen ----
+  const istAnalyse = task === 'analyse' || task === 'verfeinern';
+  let job;
   try {
-    const member = await supa.getOne('ls_members', { uid: 'eq.' + uid });
-    profile = profileBlock(member);
-  } catch (e) { /* optional, Fehler beim Laden des Profils ist kein Abbruchgrund */ }
-
-  // Analyse laeuft: Status sofort setzen, damit ein Neuladen der Seite den Lauf anzeigt.
-  if (task === 'analyse' || task === 'verfeinern') {
-    try { await supa.patch('me_projects', { id: 'eq.' + project_id }, { analyse_status: 'laeuft' }); } catch (e) {}
-  }
-
-  let promptData;
-  try {
-    promptData = prompts.buildPrompt(task, {
-      project, campaign, asset, typ, winkel: winkelListe, winkel_id, profile, hinweis, mehr, anzahl,
+    job = await supa.insert('me_jobs', {
+      uid, task, typ: typ || null,
+      project_id, campaign_id: campaign_id || null, asset_id: asset_id || null,
+      status: 'wartet',
+      chars: 0, teil_fertig: 0, teile: istAnalyse ? 4 : 1,
     });
   } catch (e) {
-    return jsonResp({ error: e.message || 'Aufgabe konnte nicht vorbereitet werden.' }, 400);
+    return jsonResp({ error: 'Job konnte nicht angelegt werden.' }, 502);
+  }
+  if (!job || !job.id) return jsonResp({ error: 'Job konnte nicht angelegt werden.' }, 502);
+
+  const ctx = { project, campaign, asset };
+
+  // Status sofort sichtbar machen, damit ein Neuladen der Seite den Lauf erkennt.
+  try {
+    if (istAnalyse) {
+      await supa.patch('me_projects', { id: 'eq.' + project_id }, { analyse_status: 'laeuft' });
+    } else if (task === 'asset' && asset) {
+      await supa.patch('me_assets', { id: 'eq.' + asset.id }, { status: 'laeuft', fehler: null });
+    }
+  } catch (e) { /* nicht abbruchwuerdig, die Job-Zeile bleibt die Wahrheit */ }
+
+  // ---- Background-Function anstossen ----
+  const base = process.env.URL || '';
+  try {
+    const res = await fetch(base + '/.netlify/functions/ai-background', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-me-internal': internalToken(job.id) },
+      body: JSON.stringify({ job_id: job.id, hinweis, winkel_id, mehr, anzahl }),
+    });
+    if (!res || (res.status !== 202 && !res.ok)) {
+      await markJobFehler(job.id, task, ctx, 'Die Hintergrund-Verarbeitung konnte nicht gestartet werden.');
+      return jsonResp({ error: 'Die Hintergrund-Verarbeitung konnte nicht gestartet werden.' }, 502);
+    }
+  } catch (e) {
+    await markJobFehler(job.id, task, ctx, 'Die Hintergrund-Verarbeitung konnte nicht erreicht werden.');
+    return jsonResp({ error: 'Die Hintergrund-Verarbeitung konnte nicht erreicht werden.' }, 502);
   }
 
-  const encoder = new TextEncoder();
-  const saveCtx = { project, campaign, asset, uid, typ, mehr };
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (obj) => {
-        try { controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n')); } catch (e) {}
-      };
-      send({ type: 'start' });
-      const beat = setInterval(() => send({ type: 'ping' }), 2000);
-
-      try {
-        // Kein temperature-Feld: neuere Modelle (Opus 5.x) lehnen es ab.
-        const payload = JSON.stringify({
-          model: MODEL,
-          max_tokens: promptData.max_tokens,
-          stream: true,
-          system: promptData.system,
-          messages: [{ role: 'user', content: promptData.user }],
-        });
-
-        // Auto-Retry gegen Ueberlastung (429/529), 5xx und Netzfehler. Andere Fehler nicht wiederholen.
-        let upstream = null;
-        let lastMsg = 'KI-Fehler.';
-        for (let attempt = 0; attempt < 3; attempt++) {
-          if (attempt > 0) await new Promise((r) => setTimeout(r, 1200 * attempt));
-          let res;
-          try {
-            res = await callAnthropicOnce(key, payload);
-          } catch (e) {
-            lastMsg = 'Die KI ist gerade nicht erreichbar.';
-            continue;
-          }
-          if (res.ok && res.body) { upstream = res; break; }
-          let m = '';
-          try { const j = await res.json(); m = (j && j.error && j.error.message) || ''; } catch (e) {}
-          lastMsg = m || ('KI-Fehler (' + res.status + ').');
-          const retriable = res.status === 429 || res.status === 529 || res.status >= 500;
-          if (!retriable) break;
-        }
-        if (!upstream) throw new Error(lastMsg);
-
-        // ---- SSE lesen, Text sammeln, alle ~400 Zeichen ein Delta senden ----
-        const reader = upstream.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        let fullText = '';
-        let sentLen = 0;
-
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          let idx;
-          while ((idx = buf.indexOf('\n')) >= 0) {
-            const line = buf.slice(0, idx);
-            buf = buf.slice(idx + 1);
-            const t = line.trim();
-            if (!t.startsWith('data:')) continue;
-            const pl = t.slice(5).trim();
-            if (!pl || pl === '[DONE]') continue;
-            try {
-              const ev = JSON.parse(pl);
-              if (ev.type === 'content_block_delta' && ev.delta && typeof ev.delta.text === 'string') {
-                fullText += ev.delta.text;
-                if (fullText.length - sentLen >= DELTA_CHUNK) {
-                  send({ type: 'delta', text: fullText.slice(sentLen) });
-                  sentLen = fullText.length;
-                }
-              }
-            } catch (e) { /* Zeile ueberspringen */ }
-          }
-        }
-        if (fullText.length > sentLen) {
-          send({ type: 'delta', text: fullText.slice(sentLen) });
-          sentLen = fullText.length;
-        }
-        if (!fullText.trim()) throw new Error('Die KI hat keinen Text geliefert.');
-
-        let parsed = textHelpers.extractJSON(fullText);
-        parsed = textHelpers.deepStripDashes(parsed);
-
-        const result = await saveResult(task, parsed, saveCtx);
-        clearInterval(beat);
-        send({ type: 'done', result });
-      } catch (err) {
-        clearInterval(beat);
-        const message = (err && err.message) || 'Unerwarteter Fehler.';
-        // Auch bei Abbruch/Timeout versuchen, den Fehlerstatus zu speichern.
-        try { await saveError(task, saveCtx, message); } catch (e) {}
-        send({ type: 'error', message });
-      } finally {
-        clearInterval(beat);
-        try { controller.close(); } catch (e) {}
-      }
-    },
-  });
-
-  return new Response(stream, {
-    status: 200,
-    headers: { ...CORS, 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' },
-  });
+  return jsonResp({ job_id: job.id }, 200);
 };
 
-export const _test = { extractTitel, saveResult, saveError, cleanId };
+export const _test = { cleanId, markJobFehler };

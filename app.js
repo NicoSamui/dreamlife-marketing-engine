@@ -347,8 +347,83 @@
       });
     });
   }
-  var AI = { stream: function (payload, opts) { return streamNDJSON('/.netlify/functions/ai', payload, opts); } };
   var IMG = { stream: function (payload, opts) { return streamNDJSON('/.netlify/functions/image', payload, opts); } };
+
+  /* ------------------------------------------------------------------
+     4b) KI-Jobs (Hintergrund-Function + Polling)
+     ------------------------------------------------------------------
+     ai.mjs legt nur noch einen Job an und antwortet sofort mit {job_id}.
+     Die eigentliche Arbeit macht ai-background.mjs (bis zu 15 Minuten,
+     Netlify Pro). Der Browser pollt den Fortschritt ueber das Gateway
+     (Tabelle me_jobs, nur lesbar). So uebersteht ein Lauf auch ein
+     Neuladen der Seite (siehe resumeRunningJobs). */
+  var JOB_POLL_MS = 2500;
+
+  // Haengt sich an einen bestehenden Job (job_id) und pollt, bis er fertig
+  // oder fehlerhaft ist. onProgress(job) wird bei jedem Tick aufgerufen.
+  function pollJob(jobId, onProgress) {
+    var cancelled = false;
+    var timer = null;
+    var promise = new Promise(function (resolve, reject) {
+      function tick() {
+        if (cancelled) return;
+        DB.get('me_jobs?select=*&id=eq.' + jobId).then(function (rows) {
+          if (cancelled) return;
+          var job = rows && rows[0];
+          if (!job) { timer = setTimeout(tick, JOB_POLL_MS); return; }
+          if (onProgress) onProgress(job);
+          if (job.status === 'fertig') { resolve(job.result || {}); return; }
+          if (job.status === 'fehler') { reject(new Error(job.fehler || T.genericError)); return; }
+          timer = setTimeout(tick, JOB_POLL_MS);
+        }).catch(function () {
+          if (!cancelled) timer = setTimeout(tick, JOB_POLL_MS);
+        });
+      }
+      tick();
+    });
+    return {
+      promise: promise,
+      cancel: function () { cancelled = true; if (timer) clearTimeout(timer); }
+    };
+  }
+
+  // Startet einen neuen Job ueber ai.mjs und pollt ihn danach. Rueckgabe wie pollJob
+  // ({promise, cancel}); cancel() bricht nur das Polling ab (der Hintergrund-Lauf laeuft
+  // serverseitig weiter, siehe SPEC F), und zeigt einen Hinweis-Toast.
+  function jobRun(payload, opts) {
+    opts = opts || {};
+    var onProgress = opts.onProgress || function () {};
+    var cancelledBeforeStart = false;
+    var inner = null;
+    var promise = fetch('/.netlify/functions/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      return r.text().then(function (txt) {
+        var json = null;
+        try { json = txt ? JSON.parse(txt) : null; } catch (e) { json = null; }
+        if (!r.ok || !json || !json.job_id) {
+          var msg = (json && (json.message || json.error)) || ('Fehler ' + r.status);
+          throw new Error(String(msg));
+        }
+        return json.job_id;
+      });
+    }).then(function (jobId) {
+      if (cancelledBeforeStart) return Promise.reject(new Error('cancelled'));
+      inner = pollJob(jobId, onProgress);
+      return inner.promise;
+    });
+    return {
+      promise: promise,
+      cancel: function () {
+        cancelledBeforeStart = true;
+        if (inner) inner.cancel();
+        toast('Läuft im Hintergrund weiter.');
+      }
+    };
+  }
+  var AI = { run: jobRun, resume: pollJob };
 
   /* ------------------------------------------------------------------
      5) Toast
@@ -671,6 +746,7 @@
       var p = rows && rows[0];
       if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Projekt nicht gefunden.</div></div>'; return; }
       STATE.project = p;
+      resumeRunningJobs(p.id, null, function () { renderProjectRoute(parseHash()); });
       renderCrumbs(r);
       var tab = r.params.tab || 'brief';
       var st = tabStatus(p);
@@ -818,11 +894,8 @@
 
   function renderAnalyseProgress(body, p) {
     body.innerHTML = progressCardHtml('analyse');
-    wireProgressCancel('analyse', p.id, function () {
-      DB.patch('me_projects?id=eq.' + p.id, { analyse_status: 'fehler' }).then(function () { renderProjectRoute(parseHash()); });
-    });
+    wireProgressCancel('analyse', p.id, function () { /* Hinweis-Toast kommt aus jobRun/pollJob.cancel() */ });
     startProgressRotation('analyse');
-    pollProject(p.id, 'analyse_status', function () { renderProjectRoute(parseHash()); });
   }
 
   /* Basiskategorie fuer STATUS_TEXTS-Lookup, da Kinds wie "asset-creative"
@@ -847,6 +920,7 @@
       '<div class="dlm-progress-bar dlm-progress-indeterminate"><div class="dlm-progress-fill" id="dlm-progress-fill-' + kind + '"></div></div>' +
       '<p class="dlm-progress-status" id="dlm-progress-status-' + kind + '">' + esc(STATUS_TEXTS[base][0]) + '</p>' +
       '<p class="dlm-progress-chars" id="dlm-progress-chars-' + kind + '">0 Zeichen</p>' +
+      '<p class="dlm-progress-teil" id="dlm-progress-teil-' + kind + '" hidden></p>' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="cancel-run" data-kind="' + kind + '">' + esc(T.cancelRun) + '</button>' +
       '</div>';
   }
@@ -870,45 +944,98 @@
     var fill = $('dlm-progress-fill-' + kind);
     if (fill) fill.style.width = Math.min(96, 8 + n / 80) + '%';
   }
+  // Zeigt bei mehrteiligen Jobs (Analyse: 4 Teile) den Fortschritt "Teil x von 4 fertig".
+  function updateProgressTeil(kind, teil, teile) {
+    var el = $('dlm-progress-teil-' + kind);
+    if (!el) return;
+    if (teile && teile > 1) {
+      el.hidden = false;
+      el.textContent = 'Teil ' + (teil || 0) + ' von ' + teile + ' fertig';
+    } else {
+      el.hidden = true;
+    }
+  }
   function wireProgressCancel(kind, id, onCancel) {
     var btn = qs('[data-action="cancel-run"][data-kind="' + kind + '"]');
     if (!btn) return;
     btn.addEventListener('click', function () {
       var r = STATE.running[kind + '-' + id];
-      if (r && r.controller) r.controller.abort();
+      if (r && r.cancel) r.cancel();
       stopProgressRotation(kind);
-      onCancel();
+      if (onCancel) onCancel();
     });
   }
-  function pollProject(id, field, cb) {
-    var timer = setInterval(function () {
-      DB.get('me_projects?select=' + field + '&id=eq.' + id).then(function (rows) {
-        var row = rows && rows[0];
-        if (row && row[field] !== 'laeuft') { clearInterval(timer); stopProgressRotation('analyse'); cb(); }
-      }).catch(function () {});
-    }, 2500);
+  // Bricht das Polling fuer einen Job-Schluessel ab (der Hintergrund-Lauf laeuft weiter).
+  function cancelRunning(key) {
+    var r = STATE.running[key];
+    if (r && r.cancel) r.cancel();
+    delete STATE.running[key];
+  }
+  function progressKindFromJob(job) {
+    if (job.task === 'analyse' || job.task === 'verfeinern') return 'analyse';
+    if (job.task === 'winkel') return 'winkel';
+    if (job.task === 'konsistenz') return 'konsistenz';
+    if (job.task === 'asset') return 'asset-' + job.typ;
+    return job.task;
+  }
+  function runningKeyFromJob(job) {
+    var kind = progressKindFromJob(job);
+    if (kind === 'analyse') return 'analyse-' + job.project_id;
+    if (kind === 'winkel') return 'winkel-' + job.project_id;
+    if (kind === 'konsistenz') return 'konsistenz-' + job.campaign_id;
+    if (kind.indexOf('asset-') === 0) return 'asset-' + job.campaign_id + '-' + job.typ;
+    return kind + '-' + job.id;
+  }
+  // Erkennt beim Oeffnen eines Projekts/einer Kampagne noch laufende Jobs (Neuladen der
+  // Seite waehrend ein Hintergrund-Lauf noch geht) und haengt sich wieder an sie an, damit
+  // die Fortschrittskarte weiter aktualisiert wird (SPEC §F).
+  function resumeRunningJobs(projectId, campaignId, rerender) {
+    DB.get('me_jobs?select=*&status=in.(wartet,laeuft)&order=created_at.desc&limit=20').then(function (jobs) {
+      (jobs || []).forEach(function (job) {
+        if (job.project_id !== projectId) return;
+        if (campaignId && job.campaign_id && job.campaign_id !== campaignId) return;
+        var key = runningKeyFromJob(job);
+        if (STATE.running[key]) return;
+        var kind = progressKindFromJob(job);
+        var poll = pollJob(job.id, function (j) {
+          updateProgressChars(kind, j.chars || 0);
+          updateProgressTeil(kind, j.teil_fertig, j.teile);
+        });
+        STATE.running[key] = { cancel: poll.cancel, jobId: job.id };
+        poll.promise.then(function () {
+          delete STATE.running[key];
+          stopProgressRotation(kind);
+          rerender();
+        }).catch(function (err) {
+          delete STATE.running[key];
+          stopProgressRotation(kind);
+          toast(err && err.message ? err.message : T.genericError);
+          rerender();
+        });
+      });
+    }).catch(function () {});
   }
 
   function runAnalyse(id, opts) {
     opts = opts || {};
-    DB.patch('me_projects?id=eq.' + id, { analyse_status: 'laeuft' }).then(function () {
+    STATE.running['analyse-' + id] = { pending: true };
+    renderProjectRoute(parseHash());
+    var run = AI.run({ uid: STATE.profile.uid, task: 'analyse', project_id: id, hinweis: opts.hinweis || undefined }, {
+      onProgress: function (job) {
+        updateProgressChars('analyse', job.chars || 0);
+        updateProgressTeil('analyse', job.teil_fertig, job.teile);
+      }
+    });
+    STATE.running['analyse-' + id] = { cancel: run.cancel };
+    run.promise.then(function () {
+      delete STATE.running['analyse-' + id];
+      stopProgressRotation('analyse');
       renderProjectRoute(parseHash());
-      var controller = new AbortController();
-      STATE.running['analyse-' + id] = { controller: controller };
-      var chars = 0;
-      AI.stream({ uid: STATE.profile.uid, task: 'analyse', project_id: id, hinweis: opts.hinweis || undefined }, {
-        signal: controller.signal,
-        onDelta: function (t) { chars += t.length; updateProgressChars('analyse', chars); }
-      }).then(function () {
-        delete STATE.running['analyse-' + id];
-        stopProgressRotation('analyse');
-        renderProjectRoute(parseHash());
-      }).catch(function (err) {
-        delete STATE.running['analyse-' + id];
-        stopProgressRotation('analyse');
-        toast(err && err.message ? err.message : T.genericError);
-        renderProjectRoute(parseHash());
-      });
+    }).catch(function (err) {
+      delete STATE.running['analyse-' + id];
+      stopProgressRotation('analyse');
+      toast(err && err.message ? err.message : T.genericError);
+      renderProjectRoute(parseHash());
     });
   }
 
@@ -969,15 +1096,13 @@
   }
 
   function runWinkel(id, mehr) {
-    STATE.running['winkel-' + id] = true;
     renderProjectRoute(parseHash());
-    var controller = new AbortController();
-    var chars = 0;
+    var run = AI.run({ uid: STATE.profile.uid, task: 'winkel', project_id: id, mehr: !!mehr }, {
+      onProgress: function (job) { updateProgressChars('winkel', job.chars || 0); }
+    });
+    STATE.running['winkel-' + id] = { cancel: run.cancel };
     startProgressRotation('winkel');
-    AI.stream({ uid: STATE.profile.uid, task: 'winkel', project_id: id, mehr: !!mehr }, {
-      signal: controller.signal,
-      onDelta: function (t) { chars += t.length; updateProgressChars('winkel', chars); }
-    }).then(function () {
+    run.promise.then(function () {
       delete STATE.running['winkel-' + id];
       stopProgressRotation('winkel');
       renderProjectRoute(parseHash());
@@ -1116,6 +1241,7 @@
       var assets = res[2] || [];
       if (!p || !c) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Kampagne nicht gefunden.</div></div>'; return; }
       STATE.project = p; STATE.campaign = c; STATE.assets = assets;
+      resumeRunningJobs(p.id, c.id, function () { renderCampaignRoute(parseHash()); });
       renderCrumbs(r);
       renderCampaignBody(r, p, c, assets);
     }).catch(function () {
@@ -1174,9 +1300,10 @@
     var filtered = assets.filter(function (a) { return STATE.assetFilter === 'alle' || a.typ === STATE.assetFilter; });
     if (!filtered.length) html += '<div class="dlm-empty-block"><h3>Noch keine Assets</h3><p>' + esc(T.assetsEmptyText) + '</p></div>';
     filtered.forEach(function (a) {
+      var effStatus = effectiveAssetStatus(a, c.id);
       html += '<div class="dlp-card dlm-asset-card" data-open-asset="' + esc(a.id) + '">' +
         '<div class="dlm-chips"><span class="dlm-chip">' + esc(assetLabel(a.typ)) + '</span>' +
-        '<span class="dlm-chip ' + statusChipCls(a.status) + '">' + esc(statusLabel(a.status)) + '</span></div>' +
+        '<span class="dlm-chip ' + statusChipCls(effStatus) + '">' + esc(statusLabel(effStatus)) + '</span></div>' +
         '<h4>' + esc(a.titel || assetLabel(a.typ)) + '</h4>' +
         '<p class="dlm-small">' + esc(fmtDate(a.created_at)) + '</p></div>';
     });
@@ -1200,10 +1327,24 @@
   }
 
   function statusLabel(s) {
+    if (s === 'fehler_abgebrochen') return 'Abgebrochen, bitte neu erzeugen';
     return s === 'fertig' ? T.statusFertig : (s === 'laeuft' ? T.statusLaeuft : (s === 'fehler' ? T.statusFehler : T.statusLeer));
   }
   function statusChipCls(s) {
+    if (s === 'fehler_abgebrochen') return 'dlm-chip-danger';
     return s === 'fertig' ? 'dlm-chip-ok' : (s === 'fehler' ? 'dlm-chip-danger' : (s === 'laeuft' ? 'dlm-chip-warn' : ''));
+  }
+  // Ein Asset, das seit ueber 20 Minuten "laeuft" zeigt, aber keinen erkannten laufenden
+  // Job (mehr) hat, gilt als abgebrochen (z. B. Netlify-Neustart). Nur Anzeige, keine
+  // Datenbank-Aenderung noetig, ein neuer Erzeugen-Lauf ueberschreibt es ohnehin.
+  var ASSET_STALE_MS = 20 * 60 * 1000;
+  function effectiveAssetStatus(a, campaignId) {
+    if (a.status !== 'laeuft') return a.status;
+    var key = 'asset-' + campaignId + '-' + a.typ;
+    if (STATE.running[key]) return a.status;
+    var ts = new Date(a.updated_at || a.created_at || 0).getTime();
+    if (ts && (Date.now() - ts) > ASSET_STALE_MS) return 'fehler_abgebrochen';
+    return a.status;
   }
 
   function renderKonsistenz(k) {
@@ -1221,12 +1362,13 @@
   }
 
   function runConsistency(campaignId) {
-    STATE.running['konsistenz-' + campaignId] = true;
+    STATE.running['konsistenz-' + campaignId] = { pending: true };
     renderCampaignRoute(parseHash());
-    var chars = 0;
-    AI.stream({ uid: STATE.profile.uid, task: 'konsistenz', project_id: STATE.project.id, campaign_id: campaignId }, {
-      onDelta: function (t) { chars += t.length; updateProgressChars('konsistenz', chars); }
-    }).then(function () {
+    var run = AI.run({ uid: STATE.profile.uid, task: 'konsistenz', project_id: STATE.project.id, campaign_id: campaignId }, {
+      onProgress: function (job) { updateProgressChars('konsistenz', job.chars || 0); }
+    });
+    STATE.running['konsistenz-' + campaignId] = { cancel: run.cancel };
+    run.promise.then(function () {
       delete STATE.running['konsistenz-' + campaignId];
       stopProgressRotation('konsistenz');
       renderCampaignRoute(parseHash());
@@ -1271,13 +1413,11 @@
       var asset = rows && rows[0];
       STATE.running['asset-' + c.id + '-' + typ] = { assetId: asset ? asset.id : null };
       renderCampaignRoute(parseHash());
-      var controller = new AbortController();
-      if (STATE.running['asset-' + c.id + '-' + typ]) STATE.running['asset-' + c.id + '-' + typ].controller = controller;
-      var chars = 0;
-      AI.stream({ uid: STATE.profile.uid, task: 'asset', project_id: p.id, campaign_id: c.id, asset_id: asset ? asset.id : undefined, typ: typ, winkel_id: winkelId || undefined, hinweis: hint || undefined }, {
-        signal: controller.signal,
-        onDelta: function (t) { chars += t.length; updateProgressChars('asset-' + typ, chars); }
-      }).then(function () {
+      var run = AI.run({ uid: STATE.profile.uid, task: 'asset', project_id: p.id, campaign_id: c.id, asset_id: asset ? asset.id : undefined, typ: typ, winkel_id: winkelId || undefined, hinweis: hint || undefined }, {
+        onProgress: function (job) { updateProgressChars('asset-' + typ, job.chars || 0); }
+      });
+      STATE.running['asset-' + c.id + '-' + typ] = { assetId: asset ? asset.id : null, cancel: run.cancel };
+      run.promise.then(function () {
         delete STATE.running['asset-' + c.id + '-' + typ];
         stopProgressRotation('asset-' + typ);
         renderCampaignRoute(parseHash());
@@ -1296,8 +1436,7 @@
   function cancelAssetRun(typ) {
     var c = STATE.campaign;
     var run = STATE.running['asset-' + c.id + '-' + typ];
-    if (run && run.controller) run.controller.abort();
-    if (run && run.assetId) DB.patch('me_assets?id=eq.' + run.assetId, { status: 'fehler', fehler: 'Abgebrochen' }).catch(function () {});
+    if (run && run.cancel) run.cancel();
     delete STATE.running['asset-' + c.id + '-' + typ];
     stopProgressRotation('asset-' + typ);
     renderCampaignRoute(parseHash());
@@ -1325,6 +1464,8 @@
       '<button type="button" class="dlp-btn dlp-ghost" data-action="close-asset">Schließen</button>' +
       '</div></div>';
 
+    var effStatus = effectiveAssetStatus(asset, c.id);
+    if (effStatus === 'fehler_abgebrochen') return head + '<div class="dlm-empty dlm-chip-danger-bg">Abgebrochen, bitte neu erzeugen.</div>';
     if (asset.status === 'laeuft') return head + '<div class="dlm-empty">Wird gerade erzeugt...</div>';
     if (asset.status === 'fehler') return head + '<div class="dlm-empty dlm-chip-danger-bg">Fehler: ' + esc(asset.fehler || T.genericError) + '</div>';
     if (!asset.content) return head + '<div class="dlm-empty">Nicht vorhanden.</div>';

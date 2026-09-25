@@ -1,0 +1,82 @@
+// anthropic.js  -  Gemeinsamer Anthropic-Aufruf fuer ai-background.mjs (Stand 25.09.2026)
+//
+// Ruft die Anthropic-Messages-API mit stream:true auf, liest den SSE-Text-Strom und
+// liefert den gesammelten Text als Promise. Auto-Retry bei 429/529/5xx/Netzfehler (bis
+// zu 3 Versuche, wie bisher in ai.mjs). Kein temperature-Feld im Payload (neuere Modelle
+// wie Opus 5.x lehnen es ab). Keine Abhaengigkeiten, Node 18+ (globales fetch).
+
+"use strict";
+
+const ANTHROPIC_VERSION = "2023-06-01";
+
+async function callOnce(key, payload) {
+  return fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": key, "anthropic-version": ANTHROPIC_VERSION, "content-type": "application/json" },
+    body: payload,
+  });
+}
+
+// { key, model, system, user, max_tokens, onDelta(deltaText, gesamtLaenge) } -> Promise<string>
+async function streamText(opts) {
+  const payload = JSON.stringify({
+    model: opts.model,
+    max_tokens: opts.max_tokens,
+    stream: true,
+    system: opts.system,
+    messages: [{ role: "user", content: opts.user }],
+  });
+
+  let upstream = null;
+  let lastMsg = "KI-Fehler.";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1200 * attempt));
+    let res;
+    try {
+      res = await callOnce(opts.key, payload);
+    } catch (e) {
+      lastMsg = "Die KI ist gerade nicht erreichbar.";
+      continue;
+    }
+    if (res.ok && res.body) { upstream = res; break; }
+    let m = "";
+    try { const j = await res.json(); m = (j && j.error && j.error.message) || ""; } catch (e) {}
+    lastMsg = m || ("KI-Fehler (" + res.status + ").");
+    const retriable = res.status === 429 || res.status === 529 || res.status >= 500;
+    if (!retriable) break;
+  }
+  if (!upstream) throw new Error(lastMsg);
+
+  const reader = upstream.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let fullText = "";
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, idx);
+      buf = buf.slice(idx + 1);
+      const t = line.trim();
+      if (!t.startsWith("data:")) continue;
+      const pl = t.slice(5).trim();
+      if (!pl || pl === "[DONE]") continue;
+      try {
+        const ev = JSON.parse(pl);
+        if (ev.type === "content_block_delta" && ev.delta && typeof ev.delta.text === "string") {
+          fullText += ev.delta.text;
+          if (opts.onDelta) {
+            try { opts.onDelta(ev.delta.text, fullText.length); } catch (e) { /* Fortschritt ist nie ein Abbruchgrund */ }
+          }
+        }
+      } catch (e) { /* Zeile ueberspringen */ }
+    }
+  }
+  if (!fullText.trim()) throw new Error("Die KI hat keinen Text geliefert.");
+  return fullText;
+}
+
+module.exports = { streamText };

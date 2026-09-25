@@ -45,6 +45,14 @@ exports.handler = createGateway({
       maxRows: 1,
       maxWrite: 1,
     },
+    // me_jobs: Hintergrund-Jobs fuer die KI-Function (ai.mjs / ai-background.mjs).
+    // Der Browser darf nur seine eigenen Jobs lesen (Fortschritt pollen), nie schreiben:
+    // Anlegen und Aktualisieren passiert ausschliesslich serverseitig mit dem Service-Key.
+    me_jobs: {
+      owner: "uid",
+      methods: ["GET"],
+      maxRows: 50,
+    },
   },
   rate: { windowSec: 600, max: 1500 },
 });

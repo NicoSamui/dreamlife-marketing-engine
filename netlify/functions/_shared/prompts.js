@@ -40,31 +40,46 @@ const DEFAULT_TEMPERATURE = 0.7;
 
 const MAX_USER_CHARS = 60000;
 
+// Reihenfolge aller 17 Analyse-Kategorien aus §3 der Spezifikation.
+const KATEGORIEN_ALL = [
+  "basisprofil", "wissensstand", "marktwissen", "weg_von", "hin_zu", "reale_situationen",
+  "disg", "life_force_8", "sekundaere_wuensche_9", "einwaende", "awareness_stufe",
+  "glaubenssaetze", "sprache_zitate", "kaufausloeser", "kanaele", "entscheidungsprozess",
+  "zusammenfassung",
+];
+
+// Aufteilung der 17 Kategorien in 4 Teile fuer die parallelen Hintergrund-Anfragen
+// (ai-background.mjs). "meta" gehoert nur zu Teil 4 dazu.
+const KATEGORIE_TEILE = {
+  1: ["basisprofil", "wissensstand", "marktwissen", "weg_von"],
+  2: ["hin_zu", "reale_situationen", "disg", "life_force_8"],
+  3: ["sekundaere_wuensche_9", "einwaende", "awareness_stufe", "glaubenssaetze", "sprache_zitate"],
+  4: ["kaufausloeser", "kanaele", "entscheidungsprozess", "zusammenfassung"],
+};
+
 // ---- Schema-Beschreibungen (aus §3 der Spezifikation) ----
 
-const ANALYSE_SCHEMA = `Gib GENAU dieses JSON-Objekt zurueck, keine zusaetzlichen Schluessel, keine fehlenden:
-{
-  "basisprofil": { "titel": "string", "inhalt": "string (ausfuehrliches Markdown)", "punkte": ["string", "..."] },
-  "wissensstand": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "marktwissen": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "weg_von": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "hin_zu": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "reale_situationen": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "disg": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "life_force_8": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "sekundaere_wuensche_9": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "einwaende": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "awareness_stufe": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "glaubenssaetze": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "sprache_zitate": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "kaufausloeser": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "kanaele": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "entscheidungsprozess": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "zusammenfassung": { "titel": "string", "inhalt": "string", "punkte": ["string", "..."] },
-  "meta": { "erzeugt_am": "ISO-Datum als string", "modell": "string", "version": "string" }
+// Baut das Analyse-Schema. Ohne "kategorien" (oder mit einer leeren Liste) das volle
+// Schema mit allen 17 Kategorien plus "meta" (Standardfall, Rueckwaertskompatibel).
+// Mit "kategorien" nur die genannten Kategorien, "meta" nur wenn "zusammenfassung"
+// darunter ist (Teil 4 der Hintergrund-Anfragen, siehe KATEGORIE_TEILE).
+function buildAnalyseSchema(kategorien) {
+  const teil = Array.isArray(kategorien) && kategorien.length ? kategorien : null;
+  const keys = teil || KATEGORIEN_ALL;
+  const withMeta = !teil || keys.indexOf("zusammenfassung") !== -1;
+  const lines = keys.map((k) => `  "${k}": { "titel": "string", "inhalt": "string (ausfuehrliches Markdown)", "punkte": ["string", "..."] }`);
+  if (withMeta) lines.push(`  "meta": { "erzeugt_am": "ISO-Datum als string", "modell": "string", "version": "string" }`);
+  let out = "Gib GENAU dieses JSON-Objekt zurueck, keine zusaetzlichen Schluessel, keine fehlenden:\n{\n" + lines.join(",\n") + "\n}\n";
+  if (teil) {
+    out += "Erzeuge NUR diese Kategorien, jede mindestens so ausfuehrlich wie im Wissensmodul verlangt.\n";
+  } else {
+    out += "Reihenfolge der Kategorien genau wie oben. \"punkte\" ist optional, \"titel\" und \"inhalt\" sind Pflicht.\n";
+  }
+  out += "Jede Kategorie braucht einen ausfuehrlichen, konkreten \"inhalt\"-Text (mehrere Absaetze), keine Stichworte statt Text.";
+  return out;
 }
-Reihenfolge der Kategorien genau wie oben. "punkte" ist optional, "titel" und "inhalt" sind Pflicht.
-Jede Kategorie braucht einen ausfuehrlichen, konkreten "inhalt"-Text (mehrere Absaetze), keine Stichworte statt Text.`;
+
+const ANALYSE_SCHEMA = buildAnalyseSchema();
 
 const WINKEL_SCHEMA = `Gib GENAU dieses JSON-Objekt zurueck:
 {
@@ -281,7 +296,13 @@ function buildUserContext(task, ctx) {
 
   if (task === "analyse" || task === "verfeinern") {
     if (ctx.hinweis && project.analyse) {
-      userCtx.bestehende_analyse = project.analyse;
+      let bestehende = project.analyse;
+      if (Array.isArray(ctx.kategorien) && ctx.kategorien.length) {
+        const gefiltert = {};
+        ctx.kategorien.forEach((k) => { if (project.analyse[k]) gefiltert[k] = project.analyse[k]; });
+        bestehende = gefiltert;
+      }
+      userCtx.bestehende_analyse = bestehende;
       userCtx.hinweis = "Verfeinere die bestehende Analyse, behalte Gutes, arbeite den Hinweis ein: " + ctx.hinweis;
     } else if (ctx.hinweis) {
       userCtx.hinweis = "Bitte beruecksichtige zusaetzlich: " + ctx.hinweis;
@@ -336,7 +357,10 @@ function buildPrompt(task, ctx) {
   ctx = ctx || {};
   const { moduleKey, schemaKey } = moduleAndSchemaFor(task, ctx);
 
-  const system = [knowledge.basis, knowledge[moduleKey], SCHEMAS[schemaKey]]
+  const istAnalyseTeil = schemaKey === "analyse" && Array.isArray(ctx.kategorien) && ctx.kategorien.length;
+  const schemaText = schemaKey === "analyse" ? buildAnalyseSchema(ctx.kategorien) : SCHEMAS[schemaKey];
+
+  const system = [knowledge.basis, knowledge[moduleKey], schemaText]
     .filter((s) => typeof s === "string" && s.trim())
     .join("\n\n");
 
@@ -347,10 +371,12 @@ function buildPrompt(task, ctx) {
   const truncated = truncateCtx(userCtx, MAX_USER_CHARS, priorityKeys);
   const user = JSON.stringify(truncated);
 
-  const max_tokens = MAX_TOKENS[task] || 8000;
+  // Ein Teil der Analyse (parallele Hintergrund-Anfrage) braucht weniger Tokens als die
+  // ganze Analyse, siehe ai-background.mjs.
+  const max_tokens = istAnalyseTeil ? 7000 : (MAX_TOKENS[task] || 8000);
   const temperature = Object.prototype.hasOwnProperty.call(TEMPERATURE, task) ? TEMPERATURE[task] : DEFAULT_TEMPERATURE;
 
   return { system, user, max_tokens, temperature };
 }
 
-module.exports = { buildPrompt, SCHEMAS, MODULE_BY_TYPE };
+module.exports = { buildPrompt, SCHEMAS, MODULE_BY_TYPE, KATEGORIEN_ALL, KATEGORIE_TEILE };
