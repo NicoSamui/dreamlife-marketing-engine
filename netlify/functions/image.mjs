@@ -14,10 +14,12 @@
 // Aufruf: POST /.netlify/functions/image  {uid, asset_id, variante, format, stil?}
 // variante = Index in content.varianten (0-basiert), format = "1:1" | "4:5" | "9:16".
 //
-// Task "avatar" (SPEC §11.3): POST /.netlify/functions/image {uid, task:'avatar', project_id, stil}
-// erzeugt EIN Portraet des Avatars (Zielperson) aus avatar.bild_prompt der Zielgruppenanalyse,
-// stil in foto|illustration|karikatur, Groesse immer 1024x1024. Ohne "task" oder mit
-// task:"creative" laeuft der bisherige Ablauf (Bild-Creative-Variante/Format) unveraendert weiter.
+// Task "avatar" (SPEC §11.3, Signatur seit §12.4 auf avatar_id umgestellt):
+// POST /.netlify/functions/image {uid, task:'avatar', avatar_id, stil}
+// erzeugt EIN Portraet eines Avatars (me_avatare-Zeile) aus profil.bild_prompt bzw.
+// profil.alter/beruf/aussehen, stil in foto|illustration|karikatur, Groesse immer 1024x1024.
+// Die alte Signatur mit project_id/me_projects.avatar entfaellt (SPEC §12.4). Ohne "task" oder
+// mit task:"creative" laeuft der bisherige Ablauf (Bild-Creative-Variante/Format) unveraendert weiter.
 
 import { randomUUID } from 'node:crypto';
 import aiGuard from './_shared/ai-guard.js';
@@ -151,34 +153,34 @@ async function generateImage(key, prompt, size, fallbackSize) {
   return { ok: false, message: lastMsg };
 }
 
-// Task "avatar" (SPEC §11.3): erzeugt genau ein Portraet aus avatar.bild_prompt, Groesse
-// immer 1024x1024. Speichert in me_projects.avatar.bilder (Eintrag fuer diesen Stil ersetzen,
-// sonst anhaengen), gewaehlt wird nur gesetzt, wenn noch keiner gewaehlt war.
+// Task "avatar" (SPEC §12.4): erzeugt genau ein Portraet aus profil.bild_prompt bzw.
+// profil.alter/beruf/aussehen, Groesse immer 1024x1024. Speichert in me_avatare.bilder
+// (Eintrag fuer diesen Stil ersetzen, sonst anhaengen), gewaehlt wird nur gesetzt, wenn noch
+// keiner gewaehlt war. Die alte Signatur mit project_id/me_projects.avatar entfaellt.
 async function handleAvatar(uid, body, key) {
-  const project_id = cleanId(body.project_id);
+  const avatar_id = cleanId(body.avatar_id);
   const stil = AVATAR_STILE.includes(body.stil) ? body.stil : null;
 
-  if (!project_id) return jsonResp({ error: 'Kein Projekt angegeben.' }, 400);
+  if (!avatar_id) return jsonResp({ error: 'Kein Avatar angegeben.' }, 400);
   if (!stil) return jsonResp({ error: 'Ungültiger Stil. Erlaubt sind foto, illustration oder karikatur.' }, 400);
 
-  let project;
+  let avatarRow;
   try {
-    project = await supa.getOne('me_projects', { id: 'eq.' + project_id });
+    avatarRow = await supa.getOne('me_avatare', { id: 'eq.' + avatar_id });
   } catch (e) {
-    return jsonResp({ error: 'Projekt konnte nicht geladen werden.' }, 502);
+    return jsonResp({ error: 'Avatar konnte nicht geladen werden.' }, 502);
   }
-  if (!project || project.uid !== uid) return jsonResp({ error: 'Kein Zugriff auf dieses Projekt.' }, 403);
+  if (!avatarRow || avatarRow.uid !== uid) return jsonResp({ error: 'Kein Zugriff auf diesen Avatar.' }, 403);
 
-  const avatar = (project.avatar && typeof project.avatar === 'object') ? project.avatar : {};
-  // Ohne KI-Bildbeschreibung reicht auch ein vom Teilnehmer gepflegtes Profil (Schritt 4 "Avatar").
-  let bildPromptRoh = String(avatar.bild_prompt || '').trim();
+  const profil = (avatarRow.profil && typeof avatarRow.profil === 'object') ? avatarRow.profil : {};
+  let bildPromptRoh = String(profil.bild_prompt || '').trim();
   const profilTeile = [];
-  if (avatar.alter) profilTeile.push(String(avatar.alter) + ' years old');
-  if (avatar.beruf) profilTeile.push('works as ' + String(avatar.beruf).slice(0, 80));
-  if (avatar.aussehen) profilTeile.push(String(avatar.aussehen).slice(0, 300));
+  if (profil.alter) profilTeile.push(String(profil.alter) + ' years old');
+  if (profil.beruf) profilTeile.push('works as ' + String(profil.beruf).slice(0, 80));
+  if (profil.aussehen) profilTeile.push(String(profil.aussehen).slice(0, 300));
   if (!bildPromptRoh && profilTeile.length) bildPromptRoh = 'Portrait of a person, ' + profilTeile.join(', ');
   else if (bildPromptRoh && profilTeile.length) bildPromptRoh += '. Keep consistent: ' + profilTeile.join(', ');
-  if (!bildPromptRoh) return jsonResp({ error: 'Bitte zuerst die Zielgruppenanalyse erstellen oder im Schritt Avatar Alter, Beruf und Aussehen eintragen.' }, 400);
+  if (!bildPromptRoh) return jsonResp({ error: 'Bitte zuerst Alter, Beruf und Aussehen des Avatars eintragen oder einen Avatar aus der Analyse vorschlagen lassen.' }, 400);
 
   const prompt = buildAvatarPrompt(bildPromptRoh.slice(0, 1500), stil);
   const encoder = new TextEncoder();
@@ -211,19 +213,17 @@ async function handleAvatar(uid, body, key) {
         }
 
         // Zeile frisch laden (Bilder anderer Stile koennen inzwischen geschrieben haben),
-        // avatar.bilder mergen statt ueberschreiben.
+        // bilder mergen statt ueberschreiben.
         let fresh = null;
-        try { fresh = await supa.getOne('me_projects', { id: 'eq.' + project_id }); } catch (e) { /* nutze alten Stand */ }
-        const baseProject = fresh || project;
-        const baseAvatar = Object.assign({}, (baseProject.avatar && typeof baseProject.avatar === 'object') ? baseProject.avatar : {});
+        try { fresh = await supa.getOne('me_avatare', { id: 'eq.' + avatar_id }); } catch (e) { /* nutze alten Stand */ }
+        const baseAvatar = fresh || avatarRow;
         const bilder = Array.isArray(baseAvatar.bilder) ? baseAvatar.bilder.slice() : [];
         const idx = bilder.findIndex((b) => b && b.stil === stil);
         if (idx >= 0) bilder[idx] = { stil, url }; else bilder.push({ stil, url });
-        baseAvatar.bilder = bilder;
-        if (!baseAvatar.gewaehlt) baseAvatar.gewaehlt = stil;
+        const gewaehlt = baseAvatar.gewaehlt || stil;
 
         try {
-          await supa.patch('me_projects', { id: 'eq.' + project_id }, { avatar: baseAvatar, updated_at: new Date().toISOString() });
+          await supa.patch('me_avatare', { id: 'eq.' + avatar_id }, { bilder, gewaehlt, updated_at: new Date().toISOString() });
         } catch (e) {
           console.error('image.mjs: Speichern des Avatar-Bilds fehlgeschlagen', e && e.message);
           // Das Bild liegt bereits im Bucket, die URL wird trotzdem an den Browser geliefert.

@@ -2,6 +2,8 @@
    Dreamlife Marketing Engine - app.js
    Eine IIFE, kein Modul-System, ES2018. Siehe docs/FRONTEND.md fuer die
    Landkarte (Funktionen, Routen, Zustaende).
+   Version 1.3 (SPEC §12): Hierarchie Firma > Zielgruppe > Avatare, Content-
+   Produktion als eigener Bereich, Kurzprofil + gestufte Detailanalyse.
    ============================================================================ */
 (function () {
   'use strict';
@@ -25,7 +27,8 @@
     return e;
   }
 
-  /* Minimaler Markdown-Renderer: Absaetze, Zeilenumbrueche, **fett**, "- " Listen. */
+  /* Minimaler Markdown-Renderer: Absaetze, Zeilenumbrueche, **fett**, "- " Listen,
+     "### " Zwischenueberschriften (SPEC §12.3, erweitert gegenueber 1.2). */
   function mdMini(raw) {
     if (!raw) return '<p class="dlm-empty-txt">Nicht vorhanden.</p>';
     var text = String(raw).replace(/\\r\\n|\\n/g, '\n').replace(/\r\n/g, '\n');
@@ -33,6 +36,12 @@
     var out = blocks.map(function (block) {
       var lines = block.split('\n').filter(function (l) { return l.length; });
       if (!lines.length) return '';
+      var h = lines[0].match(/^###\s+(.+)$/);
+      if (h && lines.length === 1) return '<h4 class="dlm-md-h4">' + inlineMd(h[1]) + '</h4>';
+      if (h) {
+        var rest = lines.slice(1);
+        return '<h4 class="dlm-md-h4">' + inlineMd(h[1]) + '</h4>' + mdMini(rest.join('\n'));
+      }
       var listLines = lines.filter(function (l) { return /^\s*-\s+/.test(l); });
       if (listLines.length === lines.length) {
         return '<ul>' + lines.map(function (l) {
@@ -92,6 +101,18 @@
     } catch (e) { toast('Kopieren nicht möglich.'); }
   }
 
+  /* Schema-Angleichung: hashtags koennen Array ODER String sein, Nachfass/Schritte
+     koennen Objekte ODER Strings sein. arr() macht aus allem ein sicheres Array. */
+  function arr(v) { if (Array.isArray(v)) return v; if (v === null || v === undefined || v === '') return []; return [v]; }
+  function hashtagsArr(h) {
+    if (Array.isArray(h)) return h;
+    return String(h || '').split(/\s+/).filter(Boolean);
+  }
+  function truncateWords(str, n) {
+    var words = String(str || '').trim().split(/\s+/).filter(Boolean);
+    return words.slice(0, n).join(' ');
+  }
+
   /* ------------------------------------------------------------------
      1) Texte (T)
      ------------------------------------------------------------------ */
@@ -99,40 +120,89 @@
     lockTitle: 'Anmeldung erforderlich',
     lockText: 'Die Dreamlife Marketing Engine öffnet sich nur über deinen Mitgliederbereich in LearningSuite.',
     hello: 'Hallo',
-    breadcrumbProjects: 'Avatare',
     footerVersion: 'Version',
     newVersion: 'Neue Version, bitte neu laden.',
     reload: 'Neu laden',
-    newProject: 'Neuen Avatar anlegen',
-    newProjectTitle: 'Neuen Avatar anlegen',
-    projectName: 'Name deines Avatars',
-    projectNamePh: 'z. B. Coaching für Zahnärzte',
     create: 'Anlegen',
     cancel: 'Abbrechen',
     save: 'Speichern',
     rename: 'Umbenennen',
     archive: 'Archivieren',
     delete: 'Löschen',
-    projectsEmpty: 'Noch kein Avatar angelegt. Leg deinen ersten Avatar an.',
-    tabBrief: 'Brief',
+    genericError: 'Da ist etwas schiefgelaufen.',
+    cancelRun: 'Abbrechen',
+    statusLaeuft: 'Läuft',
+    statusFertig: 'Fertig',
+    statusFehler: 'Fehler',
+    statusLeer: 'Leer',
+    navFirmen: 'Firmen',
+    navContent: 'Content',
+    navVorlagen: 'Vorlagen',
+    navHilfe: 'Hilfe',
+    /* Firmen (SPEC §12.2) */
+    firmenTitle: 'Firmen',
+    firmenEmptyTitle: 'Noch keine Firma angelegt',
+    firmenEmptyText: 'Leg deine erste Firma an, um danach Zielgruppen und Kampagnen zu bauen.',
+    firmaNew: 'Neue Firma',
+    firmaNewTitle: 'Neue Firma anlegen',
+    firmaName: 'Name der Firma',
+    firmaNamePh: 'z. B. Zahnarztpraxis Dr. Berger',
+    firmaWebsite: 'Website',
+    firmaBranche: 'Branche',
+    firmaDienstleistungen: 'Dienstleistungen',
+    firmaBeschreibung: 'Beschreibung (2 Sätze)',
+    firmaUsp: 'USP (Alleinstellungsmerkmal)',
+    firmaWettbewerber: 'Wettbewerber',
+    firmaTonalitaet: 'Tonalität',
+    firmaRegion: 'Region',
+    firmaB2b: 'B2B oder B2C',
+    firmaNotizen: 'Notizen',
+    firmaSaved: 'Gespeichert.',
+    firmaZielgruppen: 'Zielgruppen',
+    firmaAvatare: 'Avatare',
+    firmaOeffnen: 'Öffnen',
+    firmaArchiveConfirm: 'Diese Firma wirklich archivieren?',
+    zielgruppenEmptyTitle: 'Noch keine Zielgruppe',
+    zielgruppenEmptyText: 'Leg deine erste Zielgruppe an, um eine Analyse und Winkel zu erzeugen.',
+    zielgruppeNew: 'Neue Zielgruppe',
+    zielgruppeNewTitle: 'Neue Zielgruppe anlegen',
+    zielgruppeProdukt: 'Für welches Produkt oder Angebot?',
+    zielgruppeName: 'Name der Zielgruppe',
+    zielgruppeNamePh: 'optional, sonst automatisch benannt',
+    zielgruppeRenameTitle: 'Zielgruppe umbenennen',
+    zielgruppeArchiveConfirm: 'Diese Zielgruppe wirklich archivieren?',
+    /* Stepper Zielgruppe */
+    tabInterview: 'Interview',
     tabZielgruppe: 'Zielgruppe',
     tabWinkel: 'Winkel',
-    tabAvatar: 'Avatar',
-    tabAvatarHint: 'Erst Zielgruppenanalyse erstellen',
-    tabKampagnen: 'Kampagnen',
+    tabAvatare: 'Avatare',
+    tabWinkelHint: 'Erst Kurzprofil erstellen',
+    tabAvatareHint: 'Erst Kurzprofil erstellen',
     briefHelp: 'Je konkreter, desto besser wird die Analyse.',
     briefSaved: 'Gespeichert.',
     briefEditAll: 'Alle Felder bearbeiten',
     briefRestartInterview: 'Interview neu starten',
     briefRestartInterviewConfirm: 'Das Interview wird von vorn gestartet, deine bisherigen Antworten bleiben im Formular erhalten. Fortfahren?',
     laterAnswered: 'Später beantworten',
-    zielgruppeEmptyTitle: 'Noch keine Zielgruppenanalyse',
-    zielgruppeEmptyText: 'Erzeuge eine ausführliche Zielgruppenanalyse auf Basis deines Briefs. Das dauert 2 bis 4 Minuten, du kannst währenddessen den Tab wechseln.',
-    zielgruppeCreate: 'Zielgruppenanalyse erstellen',
+    /* Kurzprofil (SPEC §12.3) */
+    kurzprofilEmptyTitle: 'Noch kein Kurzprofil',
+    kurzprofilEmptyText: 'Erst kommt in unter einer Minute das Kurzprofil, die Detailanalyse baut sich danach Schritt für Schritt auf.',
+    kurzprofilCreate: 'Kurzprofil erstellen',
+    kurzprofilRunningTitle: 'Kurzprofil wird erstellt',
+    kurzprofilRunningHint: 'Das dauert meist unter einer Minute.',
+    detailanalyseTitle: 'Detailanalyse',
+    modusEinfach: 'Einfach',
+    modusDetailliert: 'Detailliert',
     zielgruppeRefine: 'Verfeinern mit Hinweis',
     zielgruppeRedo: 'Komplett neu erzeugen',
     zielgruppeExport: 'Als Text exportieren',
     zielgruppeRedoConfirm: 'Die bestehende Analyse wird ersetzt. Fortfahren?',
+    teilWirdErstellt: 'wird erstellt…',
+    teilFehler: 'Dieser Teil ist fehlgeschlagen.',
+    teilRetry: 'Nochmal versuchen',
+    einwaendeAntwortIdee: 'Antwort-Idee',
+    wegVonSpalte: 'WEG VON',
+    hinZuSpalte: 'HIN ZU',
     winkelEmptyTitle: 'Noch keine Marketing-Winkel',
     winkelEmptyText: 'Lass aus deiner Analyse 25 Marketing-Winkel erzeugen (5 je Awareness-Stufe) und wähle davon 5 bis 10 aus.',
     winkelCreate: 'Marketing-Winkel erzeugen',
@@ -140,19 +210,18 @@
     winkelCountUnder: 'gewählt (mindestens 5 nötig)',
     winkelCountOk: 'gewählt',
     winkelCountOver: 'zu viele gewählt (maximal 10)',
-    kampagnenEmptyTitle: 'Noch keine Kampagne angelegt',
-    kampagnenEmpty: 'Leg deine erste Kampagne an, um daraus fertige Marketing-Assets zu erzeugen.',
-    assetsEmptyText: 'Für diese Auswahl gibt es noch keine Assets. Erzeuge oben in der Asset-Werkstatt dein erstes Asset.',
-    kampagneNew: 'Neue Kampagne',
-    kampagneNewTitle: 'Neue Kampagne anlegen',
-    kampagneName: 'Name der Kampagne',
-    kampagneZiel: 'Ziel',
-    kampagneWinkel: 'Winkel (mindestens einer)',
-    kampagneAngebot: 'Angebot',
-    kampagneBauen: 'Kampagne bauen',
-    kampagneBauenHint: 'Wähle zuerst 5 bis 10 Winkel aus, dann kannst du eine Kampagne bauen.',
+    needAnalyse: 'Erzeuge zuerst ein Kurzprofil.',
     needFiveWinkel: 'Wähle zuerst mindestens 5 Winkel aus, bevor du eine Kampagne anlegst.',
-    needAnalyse: 'Erzeuge zuerst eine Zielgruppenanalyse.',
+    /* Avatare (Tab, SPEC §12.2/§12.4) */
+    avatareEmptyTitle: 'Noch kein Avatar',
+    avatareEmptyText: 'Leg einen Avatar von Hand an oder lass drei Vorschläge aus der Analyse erzeugen.',
+    avatarNewCard: 'Neuer Avatar',
+    avatarNewTitle: 'Neuen Avatar anlegen',
+    avatarVorschlagen: 'Avatar aus der Analyse vorschlagen',
+    avatarVorschlagenRunning: 'Avatare werden vorgeschlagen',
+    avatarVorschlagenNeedAnalyse: 'Für Vorschläge braucht es erst ein Kurzprofil oder eine Analyse.',
+    avatarRenameTitle: 'Avatar umbenennen',
+    avatarDeleteConfirm: 'Diesen Avatar wirklich löschen?',
     consistencyCheck: 'Konsistenz prüfen',
     consistencyRunning: 'Prüft Konsistenz...',
     assetsTitle: 'Asset-Werkstatt',
@@ -161,35 +230,16 @@
     assetHint: 'Hinweis (optional)',
     assetListTitle: 'Alle Assets',
     assetFilterAll: 'Alle',
+    assetsEmptyText: 'Für diese Auswahl gibt es noch keine Assets. Erzeuge oben in der Asset-Werkstatt dein erstes Asset.',
     assetCopyAll: 'Alles kopieren',
     assetRegenerate: 'Neu erzeugen',
     assetDelete: 'Löschen',
     assetExport: 'Als Text exportieren',
     assetPrint: 'Als PDF drucken',
-    assetBack: 'Zurück zur Kampagne',
-    cancelRun: 'Abbrechen',
-    statusLaeuft: 'Läuft',
-    statusFertig: 'Fertig',
-    statusFehler: 'Fehler',
-    statusLeer: 'Leer',
-    introTitle1: '1. Avatar anlegen',
-    introText1: 'Leg für jede Zielperson einen Avatar an. Im Interview erzählst du in wenigen Fragen von Firma, Branche und Angebot, per Text oder Sprachmemo.',
-    introTitle2: '2. Zielgruppe und Winkel',
-    introText2: 'Aus dem Interview entsteht eine ausführliche Zielgruppenanalyse mit Avatar-Bild. Daraus wählst du 5 bis 10 Marketing-Winkel aus.',
-    introTitle3: '3. Kampagne bauen',
-    introText3: 'Sobald du Winkel gewählt hast, baust du eine Kampagne und erzeugst fertige Marketing-Assets: Bild-Creatives, Reels, Captions, E-Mails, VSL, Leadmagnet und Funnel.',
-    introNext: 'Weiter',
-    introBack: 'Zurück',
-    introDone: 'Los geht\'s',
-    navAvatare: 'Avatare',
-    navVorlagen: 'Vorlagen',
-    navHilfe: 'Hilfe',
     formatImg: 'Bild erzeugen',
     imgLoading: 'Bild wird erzeugt...',
     imgDownload: 'Herunterladen',
-    genericError: 'Da ist etwas schiefgelaufen.',
     confirmDeleteAsset: 'Dieses Asset wirklich löschen?',
-    confirmDeleteProject: 'Diesen Avatar wirklich archivieren?',
     vorlagenNav: 'Creative-Vorlagen',
     vorlagenTitle: 'Creative-Vorlagen',
     vorlagenIntro: 'Lade ein Werbebild hoch, das dir gefällt. Die KI zerlegt Aufbau, Headline, Design und Wirkung und macht daraus eine Vorlage, nach der du eigene Creatives erzeugst.',
@@ -217,15 +267,7 @@
     interviewTranscribing: 'Wird umgewandelt...',
     interviewSummaryTitle: 'Alles zusammengefasst',
     interviewSummaryText: 'Prüfe deine Angaben, du kannst noch alles ändern.',
-    interviewStartAnalyse: 'Zielgruppenanalyse starten',
-    avatarBilderHint: 'Bilder gibt es nach der Zielgruppenanalyse.',
-    avatarBilderTitle: 'Avatar-Bilder',
-    avatarBildErzeugen: 'Erzeugen',
-    avatarBilderAlle: 'Alle drei erzeugen',
-    avatarBildLaeuft: 'Wird erzeugt...',
-    avatarAusgestalten: 'Avatar ausgestalten',
-    avatarZeileOhneName: 'Noch kein Avatar ausgestaltet',
-    avatarBildHinweisLeer: 'Für Bilder braucht die KI zuerst einen Bild-Prompt, Alter, Beruf oder Aussehen. Fülle rechts das Profil aus oder erzeuge zuerst die Zielgruppenanalyse.',
+    interviewStartAnalyse: 'Kurzprofil erstellen',
     avatarLabelName: 'Name',
     avatarLabelAlter: 'Alter',
     avatarLabelBeruf: 'Beruf',
@@ -241,6 +283,37 @@
     avatarUebernehmen: 'Vorschläge aus der Analyse übernehmen',
     avatarGespeichert: 'Gespeichert.',
     avatarVisitenkarteTitel: 'Avatar-Visitenkarte',
+    avatarBilderHint: 'Für Bilder braucht die KI zuerst einen Bild-Prompt, Alter, Beruf oder Aussehen. Fülle rechts das Profil aus.',
+    avatarBildErzeugen: 'Erzeugen',
+    avatarBilderAlle: 'Alle drei erzeugen',
+    avatarBildLaeuft: 'Wird erzeugt...',
+    /* Content (SPEC §12.2) */
+    contentTitle: 'Content',
+    contentFirma: 'Firma',
+    contentZielgruppe: 'Zielgruppe',
+    contentAvatar: 'Avatar (optional)',
+    contentAvatarOhne: 'Ohne Avatar',
+    contentWaehleFirma: 'Bitte zuerst eine Firma wählen.',
+    contentWaehleZielgruppe: 'Bitte eine Zielgruppe mit fertiger Analyse wählen.',
+    contentKeineZielgruppeFertig: 'Für diese Firma gibt es noch keine Zielgruppe mit fertiger Analyse.',
+    kampagnenEmptyTitle: 'Noch keine Kampagne angelegt',
+    kampagnenEmpty: 'Leg deine erste Kampagne an, um daraus fertige Marketing-Assets zu erzeugen.',
+    kampagneNew: 'Neue Kampagne',
+    kampagneNewTitle: 'Neue Kampagne anlegen',
+    kampagneName: 'Name der Kampagne',
+    kampagneZiel: 'Ziel',
+    kampagneWinkel: 'Winkel (mindestens einer)',
+    kampagneAvatar: 'Avatar (optional)',
+    kampagneAngebot: 'Angebot',
+    introTitle1: '1. Firma anlegen',
+    introText1: 'Leg deine Firma oder die deines Kunden an: Branche, Dienstleistungen und eine kurze Beschreibung reichen zum Start.',
+    introTitle2: '2. Zielgruppe verstehen',
+    introText2: 'Beantworte 8 kurze Fragen zum Produkt. Daraus entsteht erst ein Kurzprofil, dann eine ausführliche Detailanalyse und Marketing-Winkel.',
+    introTitle3: '3. Content produzieren',
+    introText3: 'Wähle Firma, Zielgruppe und optional einen Avatar und erzeuge fertige Marketing-Assets: Bild-Creatives, Reels, Captions, E-Mails, VSL, Leadmagnet und Funnel.',
+    introNext: 'Weiter',
+    introBack: 'Zurück',
+    introDone: 'Los geht\'s',
     freebieTheme: 'Design',
     freebieAkzent: 'Akzentfarbe',
     freebiePrint: 'Als PDF drucken',
@@ -263,21 +336,21 @@
   };
 
   var STATUS_TEXTS = {
+    kurzprofil: ['Liest das Interview', 'Baut den Steckbrief', 'Formuliert Schmerzen und Wünsche', 'Sammelt Zitate', 'Fasst zusammen'],
     analyse: [
-      'Lese deinen Brief', 'Baue das Basisprofil', 'Suche die echten Schmerzpunkte (WEG VON)',
+      'Lese Kurzprofil und Interview', 'Baue das Basisprofil', 'Suche die echten Schmerzpunkte (WEG VON)',
       'Formuliere den Wunschzustand (HIN ZU)', 'Schreibe reale Alltagssituationen', 'Ordne die DISG-Typen ein',
       'Bewerte die Life Force 8', 'Sammle Einwände und Glaubenssätze', 'Notiere wörtliche Sätze deiner Zielgruppe',
       'Fasse zusammen'
     ],
     winkel: ['Lese die Analyse', 'Sammle Ansatzpunkte', 'Formuliere Winkel', 'Prüfe auf Vielfalt', 'Ordne die Liste'],
+    avatar_vorschlag: ['Lese Kurzprofil und Analyse', 'Bildet Untergruppen', 'Formuliert Profile', 'Ordnet die Liste'],
     asset: ['Lese Analyse und Winkel', 'Baue die Struktur', 'Schreibe die Texte', 'Prüft Sprache und Länge', 'Speichert Ergebnis'],
     konsistenz: ['Lese alle Assets der Kampagne', 'Vergleicht Tonalität', 'Prüft Widersprüche', 'Fasst zusammen'],
     decode: ['Analysiert Aufbau und Blickführung', 'Liest Headline, Subline und CTA', 'Bestimmt Farben und Typografie', 'Fasst Psychologie und Wirkung zusammen']
   };
 
-  /* Feste Reihenfolge und Anzeige-Labels nach SPEC §3 (Befund 2). Schluessel
-     bleiben unveraendert (Backend-Daten), nur die Anzeige-Titel haben
-     Umlaute. "meta" ist kein Kategorie-Eintrag und wird nie gerendert. */
+  /* Feste Reihenfolge und Anzeige-Labels nach SPEC §3/§12.3. */
   var ANALYSE_CATS = [
     ['basisprofil', 'Basisprofil'], ['wissensstand', 'Wissensstand'], ['marktwissen', 'Marktwissen'],
     ['weg_von', 'WEG VON: der Ist-Zustand'], ['hin_zu', 'HIN ZU: der Wunschzustand'],
@@ -287,16 +360,22 @@
     ['sprache_zitate', 'Sprache und wörtliche Zitate'], ['kaufausloeser', 'Kaufauslöser'],
     ['kanaele', 'Kanäle'], ['entscheidungsprozess', 'Entscheidungsprozess'], ['zusammenfassung', 'Zusammenfassung']
   ];
-
-  /* Zielgruppen-Bereiche nach SPEC §11.6: 4 grosse Bereiche mit Sprungleiste. */
   var ANALYSE_AREAS = [
     { key: 'wer', label: 'Wer', cats: ['basisprofil', 'wissensstand', 'marktwissen'] },
     { key: 'schmerz', label: 'Schmerz und Wunsch', cats: ['weg_von', 'hin_zu', 'reale_situationen'] },
     { key: 'psychologie', label: 'Psychologie', cats: ['disg', 'life_force_8', 'sekundaere_wuensche_9', 'einwaende', 'awareness_stufe', 'glaubenssaetze', 'sprache_zitate'] },
     { key: 'kaufen', label: 'Kaufen', cats: ['kaufausloeser', 'kanaele', 'entscheidungsprozess', 'zusammenfassung'] }
   ];
+  /* Kategorie -> Analyse-Teil (SPEC §12.3: A bis F, aus me_projects.analyse_teile). */
+  var CAT_TEIL = {
+    basisprofil: 'A', wissensstand: 'A', marktwissen: 'A',
+    weg_von: 'B', hin_zu: 'B',
+    reale_situationen: 'C', disg: 'C',
+    life_force_8: 'D', sekundaere_wuensche_9: 'D', einwaende: 'D',
+    awareness_stufe: 'E', glaubenssaetze: 'E', sprache_zitate: 'E',
+    kaufausloeser: 'F', kanaele: 'F', entscheidungsprozess: 'F', zusammenfassung: 'F'
+  };
 
-  /* Kleine Inline-SVG-Icons (Befund 6), keine externen Assets. */
   var ICONS = {
     bild: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="10" r="1.6"></circle><path d="M21 16l-5.5-5.5L9 17"></path></svg>',
     video: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="M16 10.5l5-3v9l-5-3"></path></svg>',
@@ -335,24 +414,47 @@
     ['produktbewusst', 'Produktbewusst'], ['meistbewusst', 'Meistbewusst']
   ];
 
-  /* Interview-Fragen nach SPEC §11.4, feste Reihenfolge, feste Zuordnung zu Brief-Feldern. */
+  /* Interview-Fragen der Zielgruppe nach SPEC §12.1: nur noch 8 Fragen, produktbezogen.
+     Firmenfelder werden nicht mehr im Zielgruppen-Interview abgefragt (siehe Firma-Formular). */
   var INTERVIEW_QUESTIONS = [
-    { feld: 'firma', frage: 'Wie heißt dein Unternehmen oder dein Projekt?', optional: false, type: 'text' },
-    { feld: 'branche', frage: 'In welcher Branche bist du unterwegs?', optional: false, type: 'text' },
-    { feld: 'dienstleistungen', frage: 'Was genau bietest du an? Erzähl ruhig ausführlich.', optional: false, type: 'textarea' },
-    { feld: 'angebot_kurz', frage: 'Wenn du dein Angebot in einem Satz erklären müsstest, wie klingt der?', optional: true, type: 'textarea' },
+    { feld: 'produkt', frage: 'Für welches Produkt oder Angebot willst du die Zielgruppe verstehen?', optional: false, type: 'text' },
+    { feld: 'angebot_kurz', frage: 'Erkläre dieses Angebot in einem Satz.', optional: false, type: 'textarea' },
     { feld: 'zielkunde_vermutung', frage: 'Wer ist deiner Meinung nach dein idealer Kunde? Beschreib die Person, so gut du kannst.', optional: true, type: 'textarea' },
     { feld: 'preisniveau', frage: 'Auf welchem Preisniveau bewegst du dich?', optional: true, type: 'chips', options: PREISNIVEAU },
-    { feld: 'b2b_b2c', frage: 'Verkaufst du an Unternehmen oder an Privatpersonen?', optional: true, type: 'chips', options: B2B_B2C },
-    { feld: 'region', frage: 'In welcher Region bist du aktiv?', optional: true, type: 'text' },
-    { feld: 'usp', frage: 'Was machst du anders oder besser als andere?', optional: true, type: 'textarea' },
     { feld: 'kunden_beispiele', frage: 'Erzähl von zwei oder drei echten Kunden: Wer waren sie, was war ihr Problem?', optional: true, type: 'textarea' },
-    { feld: 'wettbewerber', frage: 'Wer sind deine wichtigsten Wettbewerber?', optional: true, type: 'textarea' },
-    { feld: 'tonalitaet', frage: 'Welche Tonalität passt zu dir?', optional: true, type: 'chips', options: TONALITAET },
+    { feld: 'wunsch_ergebnis', frage: 'Was soll der Kunde nach dem Kauf erreicht haben?', optional: true, type: 'textarea' },
+    { feld: 'haeufigste_einwaende', frage: 'Was hörst du am häufigsten, wenn Leute NICHT kaufen?', optional: true, type: 'textarea' },
     { feld: 'notizen', frage: 'Gibt es noch etwas, das die KI wissen sollte?', optional: true, type: 'textarea' }
   ];
+  var BRIEF_FIELDS = [
+    ['produkt', 'Produkt/Angebot', 'text', false],
+    ['angebot_kurz', 'Angebot in einem Satz', 'textarea', false],
+    ['zielkunde_vermutung', 'Vermutete Zielkunde', 'textarea', true],
+    ['preisniveau', 'Preisniveau', 'select', true, PREISNIVEAU],
+    ['kunden_beispiele', 'Kundenbeispiele', 'textarea', true],
+    ['wunsch_ergebnis', 'Wunsch-Ergebnis nach dem Kauf', 'textarea', true],
+    ['haeufigste_einwaende', 'Häufigste Einwände', 'textarea', true],
+    ['notizen', 'Notizen', 'textarea', true]
+  ];
+  function briefFieldLabel(key) {
+    var f = BRIEF_FIELDS.filter(function (x) { return x[0] === key; })[0];
+    return f ? f[1] : key;
+  }
+
+  var FIRMA_FIELDS = [
+    ['website', 'Website', 'text', true],
+    ['branche', 'Branche', 'text', false],
+    ['dienstleistungen', 'Dienstleistungen', 'textarea', false],
+    ['beschreibung', 'Beschreibung', 'textarea', false],
+    ['usp', 'USP (Alleinstellungsmerkmal)', 'textarea', true],
+    ['wettbewerber', 'Wettbewerber', 'textarea', true],
+    ['tonalitaet', 'Tonalität', 'select', true, TONALITAET],
+    ['region', 'Region', 'text', true],
+    ['b2b_b2c', 'B2B oder B2C', 'select', true, B2B_B2C],
+    ['notizen', 'Notizen', 'textarea', true]
+  ];
+
   var AVATAR_STILE = [['foto', 'Foto'], ['illustration', 'Illustration'], ['karikatur', 'Karikatur']];
-  /* Vorschlags-Chips fuer das Feld "Werte" im Tab Avatar (Profil-Formular). */
   var AVATAR_WERTE_VORSCHLAEGE = ['Sicherheit', 'Freiheit', 'Familie', 'Anerkennung', 'Wachstum', 'Gesundheit', 'Kontrolle', 'Ehrlichkeit', 'Erfolg', 'Ruhe'];
 
   /* ------------------------------------------------------------------
@@ -360,21 +462,37 @@
      ------------------------------------------------------------------ */
   var STATE = {
     profile: null,
-    projects: null,
-    project: null,
+    firmen: null,
+    firma: null,          /* aktuell geoeffnete Firma */
+    projects: null,       /* Zielgruppen-Liste einer Firma */
+    project: null,        /* aktuell geoeffnete Zielgruppe (Tabelle me_projects) */
+    avatare: null,        /* Avatar-Liste der aktuellen Zielgruppe (me_avatare) */
+    avatar: null,         /* aktuell geoeffneter Avatar (Avatar-Profil-Route) */
     campaigns: null,
     campaign: null,
     assets: null,
     openAssetId: null,
     assetFilter: 'alle',
-    winkelFilter: 'alle',
     templates: null,
     template: null,
-    running: {},      /* key -> { controller, statusIdx, chars, timer } */
-    interviewIdx: {},  /* project.id -> aktuell angezeigte Fragen-Nr (1-basiert, > Anzahl = Zusammenfassung) */
-    recording: null,   /* { recorder, stream, chunks, timer, seconds, feld } - aktuelle Sprachmemo-Aufnahme */
-    freebieDesign: {}  /* asset.id -> { theme, akzent } waehrend der Bearbeitung im Asset-Panel */
+    running: {},
+    interviewIdx: {},
+    recording: null,
+    freebieDesign: {},
+    analyseModus: 'einfach', /* dlm-analyse-modus, Standard Einfach (SPEC §12.3) */
+    contentSel: { firmaId: null, projectId: null, avatarId: null }
   };
+  try {
+    var savedModus = localStorage.getItem('dlm-analyse-modus');
+    if (savedModus === 'einfach' || savedModus === 'detailliert') STATE.analyseModus = savedModus;
+  } catch (e) {}
+  try {
+    var savedSel = JSON.parse(localStorage.getItem('dlm-content-auswahl') || 'null');
+    if (savedSel && typeof savedSel === 'object') STATE.contentSel = Object.assign(STATE.contentSel, savedSel);
+  } catch (e) {}
+  function saveContentSel() {
+    try { localStorage.setItem('dlm-content-auswahl', JSON.stringify(STATE.contentSel)); } catch (e) {}
+  }
 
   /* ------------------------------------------------------------------
      3) DB-Gateway
@@ -397,17 +515,12 @@
           }
           return json;
         });
-      }).catch(function (err) {
-        if (!/^Fehler|./.test('')) {}
-        throw err;
       });
     },
     get: function (path) { return DB.request('GET', path); },
     post: function (path, body, prefer) { return DB.request('POST', path, body, prefer || 'return=representation'); },
     patch: function (path, body) { return DB.request('PATCH', path, body); },
     del: function (path) { return DB.request('DELETE', path); },
-    /* Ruft eine Gateway-Aktion auf (z. B. upload_reference), statt des generischen
-       PostgREST-Durchgangs. Body-Felder werden neben {uid, op} mitgeschickt. */
     op: function (op, extra) {
       var uid = STATE.profile ? STATE.profile.uid : '';
       var payload = Object.assign({ uid: uid, op: op }, extra || {});
@@ -474,7 +587,7 @@
           try { evt = JSON.parse(line); } catch (e) { return; }
           if (evt.type === 'ping' || evt.type === 'start') return;
           if (evt.type === 'delta') { onDelta(evt.text || ''); return; }
-          if (evt.type === 'done') { settled = true; resolve(evt.result); }
+          if (evt.type === 'done') { settled = true; resolve(evt.result !== undefined ? evt.result : evt); }
           else if (evt.type === 'error') { settled = true; reject(new Error(evt.message || T.genericError)); }
         }
         var origResolve = resolve, origReject = reject;
@@ -488,16 +601,9 @@
 
   /* ------------------------------------------------------------------
      4b) KI-Jobs (Hintergrund-Function + Polling)
-     ------------------------------------------------------------------
-     ai.mjs legt nur noch einen Job an und antwortet sofort mit {job_id}.
-     Die eigentliche Arbeit macht ai-background.mjs (bis zu 15 Minuten,
-     Netlify Pro). Der Browser pollt den Fortschritt ueber das Gateway
-     (Tabelle me_jobs, nur lesbar). So uebersteht ein Lauf auch ein
-     Neuladen der Seite (siehe resumeRunningJobs). */
+     ------------------------------------------------------------------ */
   var JOB_POLL_MS = 2500;
 
-  // Haengt sich an einen bestehenden Job (job_id) und pollt, bis er fertig
-  // oder fehlerhaft ist. onProgress(job) wird bei jedem Tick aufgerufen.
   function pollJob(jobId, onProgress) {
     var cancelled = false;
     var timer = null;
@@ -524,9 +630,6 @@
     };
   }
 
-  // Startet einen neuen Job ueber ai.mjs und pollt ihn danach. Rueckgabe wie pollJob
-  // ({promise, cancel}); cancel() bricht nur das Polling ab (der Hintergrund-Lauf laeuft
-  // serverseitig weiter, siehe SPEC F), und zeigt einen Hinweis-Toast.
   function jobRun(payload, opts) {
     opts = opts || {};
     var onProgress = opts.onProgress || function () {};
@@ -572,7 +675,6 @@
     el.className = 'dlm-toast';
     el.textContent = msg;
     wrap.appendChild(el);
-    // Lange Meldungen (z. B. Fehler) bleiben laenger stehen.
     var dauer = Math.min(12000, Math.max(3200, String(msg || '').length * 55));
     setTimeout(function () { el.classList.add('dlm-toast-out'); }, dauer);
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, dauer + 500);
@@ -703,17 +805,25 @@
   function renderCrumbs(route) {
     var el = $('dlm-crumbs');
     if (!el) return;
-    var parts = [{ label: T.breadcrumbProjects, href: '#/' }];
-    if (route.name === 'project' || route.name === 'campaign' || route.name === 'kampagnen') {
-      var pname = STATE.project ? avatarDisplayName(STATE.project) : '...';
-      parts.push({ label: pname, href: '#/p/' + route.projectId });
+    var parts = [];
+    if (route.name === 'firma' || route.name === 'zielgruppe' || route.name === 'avatar') {
+      var fname = STATE.firma ? STATE.firma.name : '...';
+      parts.push({ label: T.navFirmen, href: '#/' });
+      parts.push({ label: fname, href: '#/f/' + (STATE.firma ? STATE.firma.id : '') });
     }
-    if (route.name === 'kampagnen') {
-      parts.push({ label: T.tabKampagnen, href: null });
+    if (route.name === 'zielgruppe' || route.name === 'avatar') {
+      var zname = STATE.project ? (STATE.project.name || STATE.project.produkt) : '...';
+      parts.push({ label: zname, href: route.name === 'avatar' ? '#/z/' + route.projectId : null });
+    }
+    if (route.name === 'avatar') {
+      var avname = STATE.avatar ? STATE.avatar.name : '...';
+      parts.push({ label: avname, href: null });
+    }
+    if (route.name === 'content' || route.name === 'campaign') {
+      parts.push({ label: T.navContent, href: route.name === 'campaign' ? '#/content' : null });
     }
     if (route.name === 'campaign') {
       var cname = STATE.campaign ? STATE.campaign.name : '...';
-      parts.push({ label: T.tabKampagnen, href: '#/p/' + route.projectId + '/kampagnen' });
       parts.push({ label: cname, href: null });
     }
     if (route.name === 'vorlagen' || route.name === 'vorlage-detail') {
@@ -723,9 +833,6 @@
       var tname = STATE.template ? STATE.template.name : '...';
       parts.push({ label: tname, href: null });
     }
-    // Erste Ebene (Avatare/Vorlagen) steht schon als Hauptpunkt in der Leiste, deshalb nur die tieferen Ebenen zeigen.
-    if (parts.length > 1) parts = parts.slice(1);
-    else parts = [];
     el.innerHTML = parts.map(function (p, i) {
       var sep = i > 0 ? '<span class="dlm-crumb-sep">&rsaquo;</span>' : '';
       if (p.href) return sep + '<a class="dlm-crumb" href="' + esc(p.href) + '">' + esc(p.label) + '</a>';
@@ -757,264 +864,398 @@
       params[decodeURIComponent(k)] = v;
     });
     var parts = path.split('/').filter(Boolean);
-    var route = { name: 'projects', params: params };
-    if (parts[0] === 'p' && parts[1]) {
+    var route = { name: 'firmen', params: params };
+    if (parts[0] === 'f' && parts[1]) { route.name = 'firma'; route.firmaId = parts[1]; }
+    else if (parts[0] === 'z' && parts[1]) {
       route.projectId = parts[1];
-      if (parts[2] === 'k' && parts[3]) { route.name = 'campaign'; route.campaignId = parts[3]; }
-      else if (parts[2] === 'kampagnen') { route.name = 'kampagnen'; }
-      else route.name = 'project';
+      if (parts[2] === 'a' && parts[3]) { route.name = 'avatar'; route.avatarId = parts[3]; }
+      else route.name = 'zielgruppe';
+    } else if (parts[0] === 'content') {
+      if (parts[1] === 'k' && parts[2]) { route.name = 'campaign'; route.campaignId = parts[2]; }
+      else route.name = 'content';
     } else if (parts[0] === 'vorlagen') {
       if (parts[1]) { route.name = 'vorlage-detail'; route.templateId = parts[1]; }
       else route.name = 'vorlagen';
+    } else if (parts[0] === 'p' && parts[1]) {
+      /* Altbestand-Route SPEC §12.1: #/p/<id> -> #/z/<id>; #/p/<id>/k/<kid> -> #/content/k/<kid> */
+      if (parts[2] === 'k' && parts[3]) { route.name = 'redirect'; route.to = '#/content/k/' + parts[3]; }
+      else { route.name = 'redirect'; route.to = '#/z/' + parts[1] + (query ? ('?' + query) : ''); }
     }
     return route;
   }
 
   function setTab(tab) {
     var route = parseHash();
-    location.hash = '#/p/' + route.projectId + (tab ? ('?tab=' + tab) : '');
+    location.hash = '#/z/' + route.projectId + (tab ? ('?tab=' + tab) : '');
   }
 
   function route() {
     var r = parseHash();
+    if (r.name === 'redirect') { location.hash = r.to; return; }
     updateNavActive(r);
-    if (r.name === 'projects') { STATE.project = null; STATE.campaign = null; renderCrumbs(r); renderProjectsView(); return; }
-    if (r.name === 'project') { renderProjectRoute(r); return; }
-    if (r.name === 'kampagnen') { renderProjectKampagnenRoute(r); return; }
+    if (r.name === 'firmen') { STATE.firma = null; STATE.project = null; STATE.campaign = null; renderCrumbs(r); renderFirmenView(); return; }
+    if (r.name === 'firma') { renderFirmaRoute(r); return; }
+    if (r.name === 'zielgruppe') { renderZielgruppeRoute(r); return; }
+    if (r.name === 'avatar') { renderAvatarRoute(r); return; }
+    if (r.name === 'content') { STATE.campaign = null; renderCrumbs(r); renderContentView(); return; }
     if (r.name === 'campaign') { renderCampaignRoute(r); return; }
-    if (r.name === 'vorlagen') { STATE.project = null; STATE.campaign = null; STATE.template = null; renderCrumbs(r); renderVorlagenView(); return; }
+    if (r.name === 'vorlagen') { STATE.firma = null; STATE.project = null; STATE.campaign = null; STATE.template = null; renderCrumbs(r); renderVorlagenView(); return; }
     if (r.name === 'vorlage-detail') { renderVorlagenDetailRoute(r); return; }
   }
 
   function updateNavActive(r) {
-    var isVorlagen = r.name === 'vorlagen' || r.name === 'vorlage-detail';
+    var active = 'firmen';
+    if (r.name === 'firma' || r.name === 'zielgruppe' || r.name === 'avatar') active = 'firmen';
+    if (r.name === 'content' || r.name === 'campaign') active = 'content';
+    if (r.name === 'vorlagen' || r.name === 'vorlage-detail') active = 'vorlagen';
     qsa('[data-nav]').forEach(function (el) {
-      var on = (el.getAttribute('data-nav') === 'vorlagen') === isVorlagen;
-      el.classList.toggle('dlm-nav-active', on);
+      el.classList.toggle('dlm-nav-active', el.getAttribute('data-nav') === active);
     });
   }
 
   /* ------------------------------------------------------------------
-     12) Ansicht: Avatare (SPEC §11.1)
+     12) Ansicht: Firmen (SPEC §12.2)
      ------------------------------------------------------------------ */
-  function statusChips(p) {
-    var an = p.analyse_status === 'fertig' ? 'Analyse fertig' : (p.analyse_status === 'laeuft' ? 'Analyse laeuft' : 'Analyse offen');
-    var anCls = p.analyse_status === 'fertig' ? 'dlm-chip-ok' : (p.analyse_status === 'laeuft' ? 'dlm-chip-warn' : '');
-    var wn = arr(p.winkel_auswahl).length;
-    return '<span class="dlm-chip ' + anCls + '">' + esc(an) + '</span>' +
-      '<span class="dlm-chip">Winkel ' + wn + '/10</span>';
-  }
+  function firmaInfo(f) { return (f && f.info && typeof f.info === 'object') ? f.info : {}; }
 
-  /* Avatar-Objekt (immer ein Objekt, nie null/undefined). */
-  function avatarOf(p) { return (p && p.avatar && typeof p.avatar === 'object') ? p.avatar : {}; }
-  function avatarDisplayName(p) { var a = avatarOf(p); return a.name || (p && p.name) || ''; }
-  function avatarInitials(name) {
-    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return '?';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  function avatarChosenImageUrl(p) {
-    var a = avatarOf(p);
-    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
-    var chosen = a.gewaehlt ? bilder.filter(function (b) { return b && b.stil === a.gewaehlt; })[0] : bilder[0];
-    return chosen ? chosen.url : null;
-  }
-  function avatarPicHtml(p, size) {
-    var url = avatarChosenImageUrl(p);
-    var name = avatarDisplayName(p);
-    if (url) return '<img class="dlm-avatar-pic" style="width:' + size + 'px;height:' + size + 'px;" src="' + esc(url) + '" alt="">';
-    return '<span class="dlm-avatar-pic dlm-avatar-initials" style="width:' + size + 'px;height:' + size + 'px;">' + esc(avatarInitials(name)) + '</span>';
-  }
-  function kampagneBauenBtn(p, cls) {
-    var enabled = arr(p.winkel_auswahl).length >= 5;
-    var title = enabled ? '' : ' title="' + esc(T.kampagneBauenHint) + '"';
-    return '<button type="button" class="dlp-btn dlp-primary ' + (cls || '') + '" data-action="go-kampagnen" data-id="' + esc(p.id) + '"' +
-      (enabled ? '' : ' disabled') + title + '>' + esc(T.kampagneBauen) + '</button>';
-  }
-
-  function renderProjectsView() {
+  function renderFirmenView() {
     var app = $('app');
-    app.innerHTML = '<div class="dlm-wrap"><div class="dlm-head-row"><h1>' + esc(T.breadcrumbProjects) + '</h1>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-      '<button type="button" class="dlp-btn dlp-primary" data-action="new-project">' + esc(T.newProject) + '</button>' +
-      '</div></div>' +
-      '<div id="dlm-projects-grid" class="dlm-grid dlm-projects-grid"><div class="dlm-loading">Lädt...</div></div></div>';
+    app.innerHTML = '<div class="dlm-wrap"><div class="dlm-head-row"><h1>' + esc(T.firmenTitle) + '</h1>' +
+      '<button type="button" class="dlp-btn dlp-primary" data-action="new-firma">' + esc(T.firmaNew) + '</button>' +
+      '</div><div id="dlm-firmen-grid" class="dlm-grid"><div class="dlm-loading">Lädt...</div></div></div>';
 
-    DB.get('me_projects?select=*&archiviert=eq.false&order=updated_at.desc').then(function (rows) {
-      STATE.projects = rows || [];
-      var grid = $('dlm-projects-grid');
+    DB.get('me_firmen?select=*&archiviert=eq.false&order=updated_at.desc').then(function (rows) {
+      STATE.firmen = rows || [];
+      var grid = $('dlm-firmen-grid');
       if (!grid) return;
-      var newTile = '<div class="dlp-card dlm-project-card-new" data-action="new-project">' +
-        '<span class="dlm-new-plus" aria-hidden="true">+</span><span>' + esc(T.newProject) + '</span></div>';
-      if (!STATE.projects.length) {
-        grid.innerHTML = '<div class="dlm-empty-block"><h3>' + esc(T.projectsEmpty) + '</h3>' +
-          '<p>Leg deinen ersten Avatar an und starte mit dem Interview.</p>' +
-          '<button type="button" class="dlp-btn dlp-primary" data-action="new-project">' + esc(T.newProject) + '</button></div>';
+      var newTile = '<div class="dlp-card dlm-project-card-new" data-action="new-firma">' +
+        '<span class="dlm-new-plus" aria-hidden="true">+</span><span>' + esc(T.firmaNew) + '</span></div>';
+      if (!STATE.firmen.length) {
+        grid.innerHTML = '<div class="dlm-empty-block"><h3>' + esc(T.firmenEmptyTitle) + '</h3><p>' + esc(T.firmenEmptyText) + '</p>' +
+          '<button type="button" class="dlp-btn dlp-primary" data-action="new-firma">' + esc(T.firmaNew) + '</button></div>';
         return;
       }
-      grid.innerHTML = STATE.projects.map(function (p) {
-        var a = avatarOf(p);
-        var berufZeile = [a.alter ? (a.alter + ' Jahre') : '', a.beruf || ''].filter(Boolean).join(' · ');
-        return '<div class="dlp-card dlm-project-card dlm-avatar-card" data-open-project="' + esc(p.id) + '">' +
-          '<div class="dlm-card-menu" data-menu="' + esc(p.id) + '">' +
-          '<button type="button" class="dlm-icon-btn" data-action="project-menu" data-id="' + esc(p.id) + '" aria-label="Menü">' +
-          '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button></div>' +
-          '<div class="dlm-avatar-card-head">' + avatarPicHtml(p, 56) +
-          '<div><h3 class="dlm-project-title"><span>' + esc(avatarDisplayName(p) || p.name) + '</span></h3>' +
-          (berufZeile ? '<p class="dlm-muted dlm-small">' + esc(berufZeile) + '</p>' : '') +
-          (a.motto ? '<p class="dlm-avatar-motto-mini">&raquo;' + esc(a.motto) + '&laquo;</p>' : '') + '</div></div>' +
-          '<p class="dlm-muted dlm-branch-row dlm-small">' + esc([p.brief && p.brief.firma, p.brief && p.brief.branche].filter(Boolean).join(' · ') || 'Ohne Branche') + '</p>' +
-          '<div class="dlm-chips">' + statusChips(p) + '<span class="dlm-chip">Kampagnen&nbsp;<span data-camp-count="' + esc(p.id) + '">...</span></span></div>' +
-          '<p class="dlm-muted dlm-small">Zuletzt bearbeitet ' + esc(fmtDate(p.updated_at)) + '</p>' +
-          '<div class="dlm-avatar-card-actions">' +
-          '<a class="dlp-btn dlp-ghost" href="#/p/' + esc(p.id) + '">Öffnen</a>' +
-          kampagneBauenBtn(p) +
-          '</div></div>';
+      grid.innerHTML = STATE.firmen.map(function (f) {
+        var info = firmaInfo(f);
+        return '<div class="dlp-card dlm-firma-card" data-open-firma="' + esc(f.id) + '">' +
+          '<h3 class="dlm-project-title">' + esc(f.name) + '</h3>' +
+          '<p class="dlm-muted dlm-small">' + esc(info.branche || 'Ohne Branche') + '</p>' +
+          '<div class="dlm-chips"><span class="dlm-chip">Zielgruppen&nbsp;<span data-fz-count="' + esc(f.id) + '">...</span></span>' +
+          '<span class="dlm-chip">Avatare&nbsp;<span data-fa-count="' + esc(f.id) + '">...</span></span></div>' +
+          '<a class="dlp-btn dlp-ghost" href="#/f/' + esc(f.id) + '">' + esc(T.firmaOeffnen) + '</a>' +
+          '</div>';
       }).join('') + newTile;
-      STATE.projects.forEach(function (p) {
-        DB.get('me_campaigns?select=id&project_id=eq.' + p.id).then(function (rows) {
-          var el = qs('[data-camp-count="' + p.id + '"]', grid);
-          if (el) el.textContent = String(arr(rows).length);
+      STATE.firmen.forEach(function (f) {
+        DB.get('me_projects?select=id&archiviert=eq.false&firma_id=eq.' + f.id).then(function (projRows) {
+          var el = qs('[data-fz-count="' + f.id + '"]', grid);
+          if (el) el.textContent = String(arr(projRows).length);
+          var ids = arr(projRows).map(function (p) { return p.id; });
+          var aEl = qs('[data-fa-count="' + f.id + '"]', grid);
+          if (!ids.length) { if (aEl) aEl.textContent = '0'; return; }
+          DB.get('me_avatare?select=id&project_id=in.(' + ids.join(',') + ')').then(function (avRows) {
+            if (aEl) aEl.textContent = String(arr(avRows).length);
+          }).catch(function () { if (aEl) aEl.textContent = '0'; });
         }).catch(function () {});
       });
     }).catch(function () {
-      var grid = $('dlm-projects-grid');
+      var grid = $('dlm-firmen-grid');
       if (grid) grid.innerHTML = '<div class="dlm-empty">' + esc(T.genericError) + '</div>';
     });
   }
 
-  function openNewProjectDialog() {
+  function firmaDialogBody(f) {
+    var info = firmaInfo(f);
+    var body = document.createElement('div');
+    body.innerHTML =
+      '<label class="dlm-field"><span>' + esc(T.firmaName) + '</span><input type="text" id="dlm-firma-name" placeholder="' + esc(T.firmaNamePh) + '" maxlength="160" value="' + esc(f ? f.name : '') + '"></label>' +
+      '<label class="dlm-field"><span>' + esc(T.firmaWebsite) + ' <em>(optional)</em></span><input type="text" id="dlm-firma-website" value="' + esc(info.website || '') + '" maxlength="200"></label>' +
+      '<label class="dlm-field"><span>' + esc(T.firmaBranche) + '</span><input type="text" id="dlm-firma-branche" value="' + esc(info.branche || '') + '" maxlength="160"></label>' +
+      '<label class="dlm-field"><span>' + esc(T.firmaDienstleistungen) + '</span><textarea id="dlm-firma-dienstleistungen" rows="3" maxlength="2000">' + esc(info.dienstleistungen || '') + '</textarea></label>' +
+      '<label class="dlm-field"><span>' + esc(T.firmaBeschreibung) + '</span><textarea id="dlm-firma-beschreibung" rows="2" maxlength="600">' + esc(info.beschreibung || '') + '</textarea></label>';
+    return body;
+  }
+
+  function openNewFirmaDialog() {
+    var body = firmaDialogBody(null);
     dialog({
-      title: T.newProjectTitle,
-      body: '<label class="dlm-field"><span>' + esc(T.projectName) + '</span>' +
-        '<input type="text" id="dlm-new-project-name" placeholder="' + esc(T.projectNamePh) + '" maxlength="120"></label>',
+      title: T.firmaNewTitle,
+      body: body,
       actions: [
         { label: T.cancel },
         {
-          label: T.create, primary: true, onClick: function () {
-            var name = qs('#dlm-new-project-name').value.trim();
+          label: T.create, primary: true, onClick: function (wrap) {
+            var name = qs('#dlm-firma-name', wrap).value.trim();
             if (!name) { toast('Bitte einen Namen eingeben.'); return false; }
-            DB.post('me_projects', { name: name, brief: {}, interview: { frage: 1, uebersprungen: [], fertig: false } }, 'return=representation').then(function (rows) {
-              var p = rows && rows[0];
-              if (p) location.hash = '#/p/' + p.id + '?tab=interview';
+            var info = {
+              website: qs('#dlm-firma-website', wrap).value.trim(),
+              branche: qs('#dlm-firma-branche', wrap).value.trim(),
+              dienstleistungen: qs('#dlm-firma-dienstleistungen', wrap).value,
+              beschreibung: qs('#dlm-firma-beschreibung', wrap).value
+            };
+            DB.post('me_firmen', { name: name, info: info, archiviert: false }, 'return=representation').then(function (rows) {
+              var f = rows && rows[0];
+              if (f) location.hash = '#/f/' + f.id;
             });
           }
         }
       ]
     });
-    setTimeout(function () { var el = qs('#dlm-new-project-name'); if (el) el.focus(); }, 30);
+    setTimeout(function () { var el = qs('#dlm-firma-name'); if (el) el.focus(); }, 30);
   }
 
-  function openProjectMenu(id, anchorEl) {
+  /* ------------------------------------------------------------------
+     13) Ansicht: Firma (Info-Formular, Zielgruppen-Liste)
+     ------------------------------------------------------------------ */
+  function zielgruppeStatusChips(p) {
+    var kp = p.kurzprofil_status === 'fertig' ? 'Kurzprofil fertig' : (p.kurzprofil_status === 'laeuft' ? 'Kurzprofil läuft' : 'Kurzprofil offen');
+    var kpCls = p.kurzprofil_status === 'fertig' ? 'dlm-chip-ok' : (p.kurzprofil_status === 'laeuft' ? 'dlm-chip-warn' : '');
+    var an = p.analyse_status === 'fertig' ? 'Analyse fertig' : (p.analyse_status === 'laeuft' ? 'Analyse läuft' : 'Analyse offen');
+    var anCls = p.analyse_status === 'fertig' ? 'dlm-chip-ok' : (p.analyse_status === 'laeuft' ? 'dlm-chip-warn' : '');
+    var wn = arr(p.winkel_auswahl).length;
+    return '<span class="dlm-chip ' + kpCls + '">' + esc(kp) + '</span>' +
+      '<span class="dlm-chip ' + anCls + '">' + esc(an) + '</span>' +
+      '<span class="dlm-chip">Winkel ' + wn + '/10</span>';
+  }
+  function zielgruppeName(p) { return p.name || ('Zielgruppe für ' + (p.produkt || '?')); }
+
+  function renderFirmaRoute(r) {
+    var app = $('app');
+    app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
+    DB.get('me_firmen?select=*&id=eq.' + r.firmaId).then(function (rows) {
+      var f = rows && rows[0];
+      if (!f) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Firma nicht gefunden.</div></div>'; return; }
+      STATE.firma = f;
+      renderCrumbs(r);
+      var info = firmaInfo(f);
+      var html = '<div class="dlm-wrap">' +
+        '<div class="dlm-head-row"><h1 class="dlm-title">' + esc(f.name) + '</h1>' +
+        '<button type="button" class="dlm-text-btn" data-action="archive-firma" data-id="' + esc(f.id) + '">' + esc(T.archive) + '</button>' +
+        '</div>' +
+        '<form id="dlm-firma-form" class="dlm-form">' +
+        '<label class="dlm-field"><span>' + esc(T.firmaName) + '</span><input type="text" name="__name" value="' + esc(f.name) + '" maxlength="160"></label>';
+      FIRMA_FIELDS.forEach(function (fld) {
+        var key = fld[0], label = fld[1], type = fld[2], optional = fld[3], opts = fld[4];
+        var val = info[key] || '';
+        html += '<label class="dlm-field"><span>' + esc(label) + (optional ? ' <em>(optional)</em>' : '') + '</span>';
+        if (type === 'textarea') html += '<textarea name="' + key + '" rows="3" maxlength="2000">' + esc(val) + '</textarea>';
+        else if (type === 'select') {
+          html += '<select name="' + key + '"><option value="">Bitte wählen</option>' +
+            opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (val === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+        } else html += '<input type="text" name="' + key + '" value="' + esc(val) + '" maxlength="200">';
+        html += '</label>';
+      });
+      html += '<p class="dlm-save-hint" id="dlm-firma-savehint">&nbsp;</p></form>';
+
+      html += '<div class="dlm-head-row" style="margin-top:34px;"><h2 class="dlm-subtitle" style="margin:0;">' + esc(T.firmaZielgruppen) + '</h2>' +
+        '<button type="button" class="dlp-btn dlp-primary" data-action="new-zielgruppe" data-id="' + esc(f.id) + '">' + esc(T.zielgruppeNew) + '</button></div>' +
+        '<div id="dlm-zielgruppen-grid" class="dlm-grid"><div class="dlm-loading">Lädt...</div></div></div>';
+      app.innerHTML = html;
+
+      var form = $('dlm-firma-form');
+      var save = debounce(function () {
+        var name = form.elements.__name.value.trim() || f.name;
+        var info2 = {};
+        FIRMA_FIELDS.forEach(function (fld) { var el = form.elements[fld[0]]; if (el) info2[fld[0]] = el.value; });
+        DB.patch('me_firmen?id=eq.' + f.id, { name: name, info: info2 }).then(function () {
+          f.name = name; f.info = info2; STATE.firma = f;
+          var hint = $('dlm-firma-savehint');
+          if (hint) hint.textContent = T.firmaSaved + ' ' + new Date().toLocaleTimeString('de-DE');
+          var titleEl = qs('.dlm-title', app);
+          if (titleEl) titleEl.textContent = name;
+        });
+      }, 800);
+      form.addEventListener('input', save);
+      form.addEventListener('change', save);
+
+      renderZielgruppenGrid(f.id);
+    }).catch(function () {
+      app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
+    });
+  }
+
+  function renderZielgruppenGrid(firmaId) {
+    DB.get('me_projects?select=*&archiviert=eq.false&firma_id=eq.' + firmaId + '&order=updated_at.desc').then(function (rows) {
+      STATE.projects = rows || [];
+      var grid = $('dlm-zielgruppen-grid');
+      if (!grid) return;
+      var newTile = '<div class="dlp-card dlm-project-card-new" data-action="new-zielgruppe" data-id="' + esc(firmaId) + '">' +
+        '<span class="dlm-new-plus" aria-hidden="true">+</span><span>' + esc(T.zielgruppeNew) + '</span></div>';
+      if (!STATE.projects.length) {
+        grid.innerHTML = '<div class="dlm-empty-block"><h3>' + esc(T.zielgruppenEmptyTitle) + '</h3><p>' + esc(T.zielgruppenEmptyText) + '</p>' +
+          '<button type="button" class="dlp-btn dlp-primary" data-action="new-zielgruppe" data-id="' + esc(firmaId) + '">' + esc(T.zielgruppeNew) + '</button></div>';
+        return;
+      }
+      grid.innerHTML = STATE.projects.map(function (p) {
+        return '<div class="dlp-card dlm-project-card" data-open-zielgruppe="' + esc(p.id) + '">' +
+          '<div class="dlm-card-menu"><button type="button" class="dlm-icon-btn" data-action="zielgruppe-menu" data-id="' + esc(p.id) + '" aria-label="Menü">' +
+          '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button></div>' +
+          '<h3 class="dlm-project-title"><span>' + esc(zielgruppeName(p)) + '</span></h3>' +
+          '<p class="dlm-muted dlm-small">' + esc(p.produkt || '') + '</p>' +
+          '<div class="dlm-chips">' + zielgruppeStatusChips(p) + '</div>' +
+          '<div class="dlm-avatar-row-mini" data-z-avatare="' + esc(p.id) + '"></div>' +
+          '<p class="dlm-muted dlm-small">Zuletzt bearbeitet ' + esc(fmtDate(p.updated_at)) + '</p>' +
+          '</div>';
+      }).join('') + newTile;
+      STATE.projects.forEach(function (p) {
+        DB.get('me_avatare?select=id,name,bilder,gewaehlt&project_id=eq.' + p.id + '&limit=5').then(function (avRows) {
+          var el = qs('[data-z-avatare="' + p.id + '"]', grid);
+          if (!el) return;
+          el.innerHTML = arr(avRows).map(function (a) { return avRowPicHtml(a, 26); }).join('');
+        }).catch(function () {});
+      });
+    }).catch(function () {
+      var grid = $('dlm-zielgruppen-grid');
+      if (grid) grid.innerHTML = '<div class="dlm-empty">' + esc(T.genericError) + '</div>';
+    });
+  }
+
+  function openNewZielgruppeDialog(firmaId) {
+    var body = document.createElement('div');
+    body.innerHTML =
+      '<label class="dlm-field"><span>' + esc(T.zielgruppeProdukt) + '</span><input type="text" id="dlm-zg-produkt" maxlength="200"></label>' +
+      '<label class="dlm-field"><span>' + esc(T.zielgruppeName) + ' <em>(optional)</em></span><input type="text" id="dlm-zg-name" placeholder="' + esc(T.zielgruppeNamePh) + '" maxlength="160"></label>';
+    dialog({
+      title: T.zielgruppeNewTitle,
+      body: body,
+      actions: [
+        { label: T.cancel },
+        {
+          label: T.create, primary: true, onClick: function (wrap) {
+            var produkt = qs('#dlm-zg-produkt', wrap).value.trim();
+            var name = qs('#dlm-zg-name', wrap).value.trim();
+            if (!produkt) { toast('Bitte ein Produkt eingeben.'); return false; }
+            var row = {
+              firma_id: firmaId, produkt: produkt, name: name || ('Zielgruppe für ' + produkt),
+              brief: { produkt: produkt }, kurzprofil_status: 'leer', analyse_status: 'leer',
+              interview: { frage: 1, uebersprungen: [], fertig: false }
+            };
+            DB.post('me_projects', row, 'return=representation').then(function (rows) {
+              var p = rows && rows[0];
+              if (p) location.hash = '#/z/' + p.id + '?tab=interview';
+            });
+          }
+        }
+      ]
+    });
+    setTimeout(function () { var el = qs('#dlm-zg-produkt'); if (el) el.focus(); }, 30);
+  }
+
+  function openZielgruppeMenu(id) {
     var p = arr(STATE.projects).filter(function (x) { return x.id === id; })[0];
     dialog({
-      title: p ? p.name : 'Projekt',
-      body: '<label class="dlm-field"><span>' + esc(T.rename) + '</span><input type="text" id="dlm-rename-input" value="' + esc(p ? p.name : '') + '"></label>',
+      title: p ? zielgruppeName(p) : 'Zielgruppe',
+      body: '<label class="dlm-field"><span>' + esc(T.rename) + '</span><input type="text" id="dlm-zg-rename-input" value="' + esc(p ? zielgruppeName(p) : '') + '"></label>',
       actions: [
         { label: T.cancel },
         {
           label: T.archive, onClick: function () {
-            confirmDialog(T.confirmDeleteProject, function () {
-              DB.patch('me_projects?id=eq.' + id, { archiviert: true }).then(function () { renderProjectsView(); });
+            confirmDialog(T.zielgruppeArchiveConfirm, function () {
+              DB.patch('me_projects?id=eq.' + id, { archiviert: true }).then(function () { renderZielgruppenGrid(STATE.firma.id); });
             });
             return false;
           }
         },
         {
           label: T.save, primary: true, onClick: function () {
-            var name = qs('#dlm-rename-input').value.trim();
+            var name = qs('#dlm-zg-rename-input').value.trim();
             if (!name) return false;
-            DB.patch('me_projects?id=eq.' + id, { name: name }).then(function () { renderProjectsView(); });
+            DB.patch('me_projects?id=eq.' + id, { name: name }).then(function () { renderZielgruppenGrid(STATE.firma.id); });
           }
         }
       ]
     });
   }
 
-  /* ------------------------------------------------------------------
-     13) Ansicht: Projekt (Stepper: Brief / Zielgruppe / Winkel / Kampagnen)
-     ------------------------------------------------------------------ */
-  function tabStatus(project) {
-    var winkelCount = arr(project.winkel_auswahl).length;
-    var a = avatarOf(project);
-    return {
-      brief: true,
-      zielgruppe: project.analyse_status === 'fertig',
-      winkel: project.analyse_status === 'fertig',
-      winkelDone: winkelCount >= 5,
-      avatar: project.analyse_status === 'fertig',
-      avatarDone: !!(a.name && avatarChosenImageUrl(project)),
-      kampagnen: winkelCount >= 5
-    };
-  }
-
-  /* Stepper im Avatar hat nach SPEC §11.1 nur noch 3 Schritte: Brief, Zielgruppe, Winkel.
-     Kampagnen sind kein Stepper-Schritt mehr, sondern eine eigene Route (#/p/<id>/kampagnen),
-     erreichbar ueber den Primaer-Button "Kampagne bauen". */
-  function renderProjectRoute(r) {
-    var app = $('app');
-    app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
-    DB.get('me_projects?select=*&id=eq.' + r.projectId).then(function (rows) {
-      var p = rows && rows[0];
-      if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Avatar nicht gefunden.</div></div>'; return; }
-      STATE.project = p;
-      resumeRunningJobs(p.id, null, function () { renderProjectRoute(parseHash()); });
-      renderCrumbs(r);
-      var tab = r.params.tab || 'brief';
-      if (tab === 'interview') tab = 'brief';
-      var st = tabStatus(p);
-      if (tab === 'winkel' && !st.winkel) tab = 'brief';
-      if (tab === 'avatar' && !st.avatar) tab = 'brief';
-
-      app.innerHTML =
-        '<div class="dlm-wrap">' +
-        '<div class="dlm-head-row">' +
-        '<div class="dlm-avatar-headline">' + avatarPicHtml(p, 48) + '<div><h1 class="dlm-title">' + esc(avatarDisplayName(p) || p.name) + '</h1>' +
-        (avatarOf(p).motto ? '<p class="dlm-avatar-motto-mini">&raquo;' + esc(avatarOf(p).motto) + '&laquo;</p>' : '') + '</div></div>' +
-        kampagneBauenBtn(p) +
-        '</div>' +
-        '<nav class="dlm-stepper" id="dlm-stepper">' +
-        stepperTab(1, 'brief', T.tabBrief, true, true, tab, '') +
-        stepperTab(2, 'zielgruppe', T.tabZielgruppe, true, st.zielgruppe, tab, '') +
-        stepperTab(3, 'winkel', T.tabWinkel, st.winkel, st.winkelDone, tab, T.tabAvatarHint) +
-        stepperTab(4, 'avatar', T.tabAvatar, st.avatar, st.avatarDone, tab, T.tabAvatarHint) +
-        '</nav>' +
-        '<div id="dlm-tab-body"></div>' +
-        '</div>';
-
-      qsa('.dlm-tab', $('dlm-stepper')).forEach(function (btn) {
-        if (btn.classList.contains('dlm-tab-disabled')) return;
-        btn.addEventListener('click', function () { setTab(btn.getAttribute('data-tab')); });
-      });
-
-      var body = $('dlm-tab-body');
-      if (tab === 'brief') renderBriefTab(body, p);
-      else if (tab === 'zielgruppe') renderZielgruppeTab(body, p);
-      else if (tab === 'avatar') renderAvatarTab(body, p);
-      else renderWinkelTab(body, p);
-    }).catch(function () {
-      app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
+  function openFirmaMenu() {
+    confirmDialog(T.firmaArchiveConfirm, function () {
+      DB.patch('me_firmen?id=eq.' + STATE.firma.id, { archiviert: true }).then(function () { location.hash = '#/'; });
     });
   }
 
-  /* Route #/p/<id>/kampagnen: eigene Seite mit der Kampagnenliste des Avatars
-     (SPEC §11.1), ausserhalb des Steppers. */
-  function renderProjectKampagnenRoute(r) {
+  /* ------------------------------------------------------------------
+     14) Avatar-Zeilen-Helfer (me_avatare, SPEC §12.1)
+     ------------------------------------------------------------------ */
+  function avRowInitials(name) {
+    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  function avRowChosenImageUrl(a) {
+    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
+    var chosen = a.gewaehlt ? bilder.filter(function (b) { return b && b.stil === a.gewaehlt; })[0] : bilder[0];
+    return chosen ? chosen.url : null;
+  }
+  function avRowPicHtml(a, size) {
+    var url = avRowChosenImageUrl(a);
+    var name = a.name || '';
+    if (url) return '<img class="dlm-avatar-pic" style="width:' + size + 'px;height:' + size + 'px;" src="' + esc(url) + '" alt="">';
+    return '<span class="dlm-avatar-pic dlm-avatar-initials" style="width:' + size + 'px;height:' + size + 'px;">' + esc(avRowInitials(name)) + '</span>';
+  }
+  function avRowProfil(a) { return (a && a.profil && typeof a.profil === 'object') ? a.profil : {}; }
+
+  /* ------------------------------------------------------------------
+     15) Ansicht: Zielgruppe (Stepper: Interview / Zielgruppe / Winkel / Avatare)
+     ------------------------------------------------------------------ */
+  function tabStatus(project) {
+    var winkelCount = arr(project.winkel_auswahl).length;
+    return {
+      interview: true,
+      zielgruppe: true,
+      zielgruppeDone: project.kurzprofil_status === 'fertig',
+      winkel: project.kurzprofil_status === 'fertig' || project.analyse_status === 'fertig',
+      winkelDone: winkelCount >= 5,
+      avatare: project.kurzprofil_status === 'fertig' || project.analyse_status === 'fertig'
+    };
+  }
+
+  function loadFirmaForProject(p) {
+    if (STATE.firma && STATE.firma.id === p.firma_id) return Promise.resolve(STATE.firma);
+    return DB.get('me_firmen?select=*&id=eq.' + p.firma_id).then(function (rows) {
+      STATE.firma = rows && rows[0];
+      return STATE.firma;
+    });
+  }
+
+  function renderZielgruppeRoute(r) {
     var app = $('app');
     app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
     DB.get('me_projects?select=*&id=eq.' + r.projectId).then(function (rows) {
       var p = rows && rows[0];
-      if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Avatar nicht gefunden.</div></div>'; return; }
+      if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Zielgruppe nicht gefunden.</div></div>'; return; }
       STATE.project = p;
-      renderCrumbs(r);
-      app.innerHTML = '<div class="dlm-wrap">' +
-        '<div class="dlm-head-row">' +
-        '<div class="dlm-avatar-headline">' + avatarPicHtml(p, 48) + '<h1 class="dlm-title">' + esc(T.tabKampagnen) + ' · ' + esc(avatarDisplayName(p) || p.name) + '</h1></div>' +
-        '<a class="dlp-btn dlp-ghost" href="#/p/' + esc(p.id) + '">Zum Avatar</a>' +
-        '</div>' +
-        '<div id="dlm-tab-body"></div></div>';
-      renderKampagnenTab($('dlm-tab-body'), p);
+      return loadFirmaForProject(p).then(function () {
+        resumeRunningJobs(p.id, null, function () { renderZielgruppeRoute(parseHash()); });
+        renderCrumbs(r);
+        var tab = r.params.tab || (p.interview && p.interview.fertig ? 'zielgruppe' : 'interview');
+        var st = tabStatus(p);
+        if (tab === 'winkel' && !st.winkel) tab = 'interview';
+        if (tab === 'avatare' && !st.avatare) tab = 'interview';
+
+        app.innerHTML =
+          '<div class="dlm-wrap">' +
+          '<div class="dlm-head-row"><div><h1 class="dlm-title">' + esc(zielgruppeName(p)) + '</h1>' +
+          '<p class="dlm-muted dlm-small">' + esc(p.produkt || '') + '</p></div></div>' +
+          '<nav class="dlm-stepper" id="dlm-stepper">' +
+          stepperTab(1, 'interview', T.tabInterview, true, !!(p.interview && p.interview.fertig), tab, '') +
+          stepperTab(2, 'zielgruppe', T.tabZielgruppe, true, st.zielgruppeDone, tab, '') +
+          stepperTab(3, 'winkel', T.tabWinkel, st.winkel, st.winkelDone, tab, T.tabWinkelHint) +
+          stepperTab(4, 'avatare', T.tabAvatare, st.avatare, arr(STATE.avatare).length > 0, tab, T.tabAvatareHint) +
+          '</nav>' +
+          '<div id="dlm-tab-body"></div>' +
+          '</div>';
+
+        qsa('.dlm-tab', $('dlm-stepper')).forEach(function (btn) {
+          if (btn.classList.contains('dlm-tab-disabled')) return;
+          btn.addEventListener('click', function () { setTab(btn.getAttribute('data-tab')); });
+        });
+
+        var body = $('dlm-tab-body');
+        if (tab === 'zielgruppe') renderZielgruppeTab(body, p);
+        else if (tab === 'winkel') renderWinkelTab(body, p);
+        else if (tab === 'avatare') renderAvatareTab(body, p);
+        else renderBriefTab(body, p);
+      });
     }).catch(function () {
       app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
     });
@@ -1022,8 +1263,6 @@
 
   var ICON_CHECK = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>';
 
-  /* Stepper-Tab (Befund 5): Nummer als Kreis, Haken bei erledigt,
-     ausgegraut + Tooltip bei deaktiviert. */
   function stepperTab(num, key, label, enabled, done, current, disabledHint) {
     var cls = 'dlm-tab' + (key === current ? ' dlm-tab-active' : '') + (enabled ? '' : ' dlm-tab-disabled');
     var circle = '<span class="dlm-tab-num' + (done ? ' dlm-tab-num-done' : '') + '">' + (done ? ICON_CHECK : num) + '</span>';
@@ -1031,32 +1270,7 @@
     return '<button type="button" class="' + cls + '" data-tab="' + key + '"' + title + (enabled ? '' : ' aria-disabled="true"') + '>' + circle + '<span>' + esc(label) + '</span></button>';
   }
 
-  /* --- Brief ------------------------------------------------------- */
-  var BRIEF_FIELDS = [
-    ['firma', 'Firma', 'text', false],
-    ['branche', 'Branche', 'text', false],
-    ['dienstleistungen', 'Dienstleistungen', 'textarea', false],
-    ['angebot_kurz', 'Angebot kurz beschrieben', 'textarea', true],
-    ['zielkunde_vermutung', 'Vermutete Zielkunde', 'textarea', true],
-    ['preisniveau', 'Preisniveau', 'select', true, PREISNIVEAU],
-    ['region', 'Region', 'text', true],
-    ['b2b_b2c', 'B2B oder B2C', 'select', true, B2B_B2C],
-    ['usp', 'USP (Alleinstellungsmerkmal)', 'textarea', true],
-    ['kunden_beispiele', 'Kundenbeispiele', 'textarea', true],
-    ['wettbewerber', 'Wettbewerber', 'textarea', true],
-    ['tonalitaet', 'Tonalität', 'select', true, TONALITAET],
-    ['website', 'Website', 'text', true],
-    ['bestehende_texte', 'Bestehende Texte (Stilreferenz)', 'textarea', true],
-    ['notizen', 'Notizen', 'textarea', true]
-  ];
-
-  function briefFieldLabel(key) {
-    var f = BRIEF_FIELDS.filter(function (x) { return x[0] === key; })[0];
-    return f ? f[1] : key;
-  }
-
-  /* Tab Brief (SPEC §11.4): zeigt fuer Avatare mit interview.fertig das Formular,
-     sonst das Interview-Onboarding. */
+  /* --- Tab 1: Interview --------------------------------------------- */
   function renderBriefTab(body, p) {
     var interview = p.interview || {};
     if (interview.fertig) renderBriefForm(body, p);
@@ -1102,19 +1316,20 @@
         var el = form.elements[f[0]];
         if (el) brief2[f[0]] = el.value;
       });
-      DB.patch('me_projects?id=eq.' + p.id, { brief: brief2 }).then(function () {
+      var patch = { brief: brief2 };
+      if (brief2.produkt) patch.produkt = brief2.produkt;
+      DB.patch('me_projects?id=eq.' + p.id, patch).then(function () {
         var hint = $('dlm-brief-savehint');
         if (hint) hint.textContent = T.briefSaved + ' ' + new Date().toLocaleTimeString('de-DE');
         p.brief = brief2;
+        if (patch.produkt) p.produkt = patch.produkt;
       });
     }, 800);
     form.addEventListener('input', save);
     form.addEventListener('change', save);
   }
 
-  /* ------------------------------------------------------------------
-     13b) Interview-Onboarding (SPEC §11.4)
-     ------------------------------------------------------------------ */
+  /* --- Interview-Onboarding (Sprachmemo, Skip) ------------------------ */
   function interviewCurrentIdx(p) {
     if (typeof STATE.interviewIdx[p.id] === 'number') return STATE.interviewIdx[p.id];
     var fromSrv = (p.interview && p.interview.frage) || 1;
@@ -1214,9 +1429,12 @@
       interview.uebersprungen = skip;
       interview.frage = idx + 1;
       interview.fertig = idx + 1 > total;
-      DB.patch('me_projects?id=eq.' + p.id, { brief: brief2, interview: interview }).then(function () {
+      var patch = { brief: brief2, interview: interview };
+      if (q.feld === 'produkt') patch.produkt = value;
+      DB.patch('me_projects?id=eq.' + p.id, patch).then(function () {
         p.brief = brief2;
         p.interview = interview;
+        if (q.feld === 'produkt') p.produkt = value;
         interviewSetIdx(p, idx + 1);
         renderBriefTab(body, p);
       });
@@ -1233,7 +1451,6 @@
       var recorder;
       try { recorder = new MediaRecorder(stream, { mimeType: mime }); } catch (e) { recorder = new MediaRecorder(stream); mime = recorder.mimeType || mime; }
       var chunks = [];
-      var seconds = 0;
       var rec = { recorder: recorder, stream: stream, chunks: chunks, seconds: 0, _discard: false };
       STATE.recording = rec;
       recorder.addEventListener('dataavailable', function (e) { if (e.data && e.data.size) chunks.push(e.data); });
@@ -1311,304 +1528,27 @@
     var save = debounce(function () {
       var brief2 = {};
       BRIEF_FIELDS.forEach(function (f) { var el = form.elements[f[0]]; if (el) brief2[f[0]] = el.value; });
-      DB.patch('me_projects?id=eq.' + p.id, { brief: brief2 }).then(function () { p.brief = brief2; });
+      var patch = { brief: brief2 };
+      if (brief2.produkt) patch.produkt = brief2.produkt;
+      DB.patch('me_projects?id=eq.' + p.id, patch).then(function () { p.brief = brief2; if (patch.produkt) p.produkt = patch.produkt; });
     }, 800);
     form.addEventListener('input', save);
     form.addEventListener('change', save);
   }
 
-  /* --- Zielgruppe --------------------------------------------------- */
-  /* Kompakte Avatar-Zeile im Tab Zielgruppe (der grosse Bild-/Profil-Bereich
-     ist in den eigenen Schritt "Avatar" umgezogen, siehe renderAvatarTab). */
-  function renderAvatarZeile(p) {
-    var a = avatarOf(p);
-    var berufZeile = [a.alter ? (a.alter + ' Jahre') : '', a.beruf || ''].filter(Boolean).join(' · ');
-    return '<div class="dlm-avatar-zeile">' + avatarPicHtml(p, 48) +
-      '<div class="dlm-avatar-zeile-info"><strong>' + esc(a.name || T.avatarZeileOhneName) + '</strong>' +
-      (berufZeile ? '<span class="dlm-muted dlm-small">' + esc(berufZeile) + '</span>' : '') + '</div>' +
-      '<a class="dlp-btn dlp-ghost" href="#/p/' + esc(p.id) + '?tab=avatar">' + esc(T.avatarAusgestalten) + '</a>' +
-      '</div>';
-  }
-
-  /* --- Avatar (Bild-Bereich, aus dem Tab Zielgruppe hierher verschoben) --- */
-  function avatarSlotHtml(p, a, stil, label) {
-    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
-    var eintrag = bilder.filter(function (b) { return b && b.stil === stil; })[0];
-    var running = !!STATE.running['avatar-' + p.id + '-' + stil];
-    var chosen = a.gewaehlt === stil;
-    return '<div class="dlm-avatar-slot' + (chosen ? ' dlm-avatar-slot-chosen' : '') + '">' +
-      (running
-        ? '<div class="dlm-avatar-slot-ph">' + esc(T.avatarBildLaeuft) + '</div>'
-        : (eintrag && eintrag.url
-          ? '<button type="button" class="dlm-avatar-slot-img" data-action="choose-avatar-bild" data-stil="' + esc(stil) + '"><img src="' + esc(eintrag.url) + '" alt=""></button>'
-          : '<div class="dlm-avatar-slot-ph">' + esc(label) + '</div>')) +
-      '<div class="dlm-avatar-slot-foot"><span class="dlm-small">' + esc(label) + (chosen ? ' · gewählt' : '') + '</span>' +
-      (!running ? '<button type="button" class="dlm-text-btn" data-action="gen-avatar-bild" data-stil="' + esc(stil) + '">' + esc(T.avatarBildErzeugen) + '</button>' : '') +
-      '</div></div>';
-  }
-
-  /* Linke Spalte des Tabs Avatar: grosses gewaehltes Bild plus die drei Stil-Slots. */
-  function renderAvatarBildSpalte(p) {
-    var a = avatarOf(p);
-    var html = '<div class="dlm-avatar-bildspalte">' +
-      '<div class="dlm-avatar-big-pic">' + avatarPicHtml(p, 260) + '</div>';
-    var hatGrundlage = a.bild_prompt || a.alter || a.beruf || a.aussehen;
-    if (!hatGrundlage) {
-      html += '<p class="dlm-muted dlm-small">' + esc(T.avatarBildHinweisLeer) + '</p>';
-    } else {
-      html += '<div class="dlm-avatar-slots">' + AVATAR_STILE.map(function (s) { return avatarSlotHtml(p, a, s[0], s[1]); }).join('') + '</div>' +
-        '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" data-action="gen-avatar-bild-all">' + esc(T.avatarBilderAlle) + '</button></div>';
-    }
-    html += '</div>';
-    return html;
-  }
-
-  /* Kuerzt einen Punkt-Text auf hoechstens n Woerter (fuer Werte-Vorschlaege aus der Analyse). */
-  function truncateWords(str, n) {
-    var words = String(str || '').trim().split(/\s+/).filter(Boolean);
-    return words.slice(0, n).join(' ');
-  }
-
-  function werteChipsHtml(werte) {
-    return werte.map(function (w, i) {
-      return '<span class="dlm-chip dlm-chip-removable">' + esc(w) +
-        '<button type="button" class="dlm-chip-x" data-werte-remove="' + i + '" aria-label="Entfernen">&times;</button></span>';
-    }).join('');
-  }
-
-  /* Avatar-Visitenkarte (SPEC-Wunsch Schritt 4): Vorschau-Karte am Ende des Tabs, wird nach
-     jedem Autosave neu gerendert (refreshAvatarVisitenkarte), ohne das Formular neu aufzubauen. */
-  function renderAvatarVisitenkarte(p) {
-    var a = avatarOf(p);
-    var berufZeile = [a.alter ? (a.alter + ' Jahre') : '', a.beruf || ''].filter(Boolean).join(' · ');
-    return '<div class="dlm-avatar-visitenkarte" id="dlm-avatar-visitenkarte">' +
-      '<h3 class="dlm-subtitle" style="margin-top:0;">' + esc(T.avatarVisitenkarteTitel) + '</h3>' +
-      '<div class="dlm-avatar-visitenkarte-head">' + avatarPicHtml(p, 72) +
-      '<div><h3 class="dlm-title" style="margin:0;">' + esc(a.name || p.name) + '</h3>' +
-      (berufZeile ? '<p class="dlm-muted">' + esc(berufZeile) + '</p>' : '') +
-      (a.motto ? '<p class="dlm-avatar-motto">&raquo;' + esc(a.motto) + '&laquo;</p>' : '') +
-      '</div></div>' +
-      (arr(a.werte).length ? '<div class="dlm-chips">' + arr(a.werte).map(function (w) { return '<span class="dlm-chip">' + esc(w) + '</span>'; }).join('') + '</div>' : '') +
-      (a.kurzbeschreibung ? '<p class="dlm-avatar-kurz">' + esc(a.kurzbeschreibung) + '</p>' : '') +
-      '<div class="dlm-toolbar dlm-avatar-visitenkarte-actions">' + kampagneBauenBtn(p) + '</div>' +
-      '</div>';
-  }
-  function refreshAvatarVisitenkarte(p) {
-    var el = $('dlm-avatar-visitenkarte');
-    if (el) el.outerHTML = renderAvatarVisitenkarte(p);
-  }
-
-  /* Liest die aktuellen Formularwerte plus das lokale Werte-Array. */
-  function avatarFormValues(form, werte) {
-    return {
-      name: form.elements.name.value.trim(),
-      alter: form.elements.alter.value ? Number(form.elements.alter.value) : null,
-      beruf: form.elements.beruf.value.trim(),
-      kurzbeschreibung: form.elements.kurzbeschreibung.value,
-      werte: werte.slice(),
-      ziele: form.elements.ziele.value,
-      sorge: form.elements.sorge.value,
-      aussehen: form.elements.aussehen.value,
-      motto: form.elements.motto.value.trim()
-    };
-  }
-
-  /* Autosave des Profil-Formulars (SPEC-Wunsch Schritt 4): Avatar-Objekt vorher frisch aus der
-     DB laden und mergen, damit gerade erzeugte Bilder (bilder/gewaehlt/bild_prompt) nicht durch
-     ein PATCH aus einem aelteren Formularstand ueberschrieben werden. */
-  function saveAvatarForm(p, form, werte, hintEl) {
-    var fields = avatarFormValues(form, werte);
-    DB.get('me_projects?select=id,avatar&id=eq.' + p.id).then(function (rows) {
-      var fresh = rows && rows[0];
-      var freshAvatar = fresh ? avatarOf(fresh) : avatarOf(p);
-      var merged = Object.assign({}, freshAvatar, fields);
-      return DB.patch('me_projects?id=eq.' + p.id, { avatar: merged }).then(function () {
-        p.avatar = merged;
-        if (STATE.project && STATE.project.id === p.id) STATE.project.avatar = merged;
-        if (hintEl) hintEl.textContent = T.avatarGespeichert + ' ' + new Date().toLocaleTimeString('de-DE');
-        refreshAvatarVisitenkarte(p);
-      });
-    }).catch(function () { toast(T.genericError); });
-  }
-
-  function wireAvatarForm(body, p) {
-    var form = $('dlm-avatar-form');
-    if (!form) return;
-    var werte = arr(avatarOf(p).werte).slice();
-    var hint = $('dlm-avatar-savehint');
-    var debouncedSave = debounce(function () { saveAvatarForm(p, form, werte, hint); }, 800);
-
-    function rerenderChips() {
-      var box = $('dlm-avatar-werte-chips');
-      if (box) box.innerHTML = werteChipsHtml(werte);
-    }
-    function chipExists(val) {
-      return werte.map(function (w) { return w.toLowerCase(); }).indexOf(val.toLowerCase()) !== -1;
-    }
-
-    form.addEventListener('input', debouncedSave);
-    form.addEventListener('change', debouncedSave);
-    /* Verhindert ein Absenden des Formulars, wenn im Werte-Chip-Feld Enter gedrueckt wird. */
-    form.addEventListener('submit', function (e) { e.preventDefault(); });
-
-    var werteInput = $('dlm-avatar-werte-input');
-    if (werteInput) {
-      werteInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.key === ',') {
-          e.preventDefault();
-          var val = werteInput.value.replace(/,$/, '').trim();
-          werteInput.value = '';
-          if (val && !chipExists(val)) { werte.push(val); rerenderChips(); debouncedSave(); }
-        }
-      });
-    }
-    var chipsBox = $('dlm-avatar-werte-chips');
-    if (chipsBox) {
-      chipsBox.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-werte-remove]');
-        if (!btn) return;
-        werte.splice(Number(btn.getAttribute('data-werte-remove')), 1);
-        rerenderChips();
-        debouncedSave();
-      });
-    }
-    qsa('[data-werte-vorschlag]', body).forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var val = btn.getAttribute('data-werte-vorschlag');
-        if (!chipExists(val)) { werte.push(val); rerenderChips(); debouncedSave(); }
-      });
-    });
-
-    var uebBtn = $('dlm-avatar-uebernehmen');
-    if (uebBtn) {
-      uebBtn.addEventListener('click', function () {
-        var analyse = p.analyse || {};
-        var hinZuPunkte = arr(analyse.hin_zu && analyse.hin_zu.punkte);
-        var wegVonPunkte = arr(analyse.weg_von && analyse.weg_von.punkte);
-        var lf8Punkte = arr(analyse.life_force_8 && analyse.life_force_8.punkte);
-        lf8Punkte.slice(0, 4).map(function (t) { return truncateWords(t, 4); }).filter(Boolean).forEach(function (w) {
-          if (!chipExists(w)) werte.push(w);
-        });
-        rerenderChips();
-        if (!form.elements.ziele.value.trim() && hinZuPunkte.length) form.elements.ziele.value = hinZuPunkte.slice(0, 3).join('. ');
-        if (!form.elements.sorge.value.trim() && wegVonPunkte[0]) form.elements.sorge.value = wegVonPunkte[0];
-        uebBtn.hidden = true;
-        debouncedSave();
-      });
-    }
-  }
-
-  /* Tab Avatar (SPEC-Wunsch Schritt 4): links Bild-Bereich, rechts Profil-Formular,
-     unten die Avatar-Visitenkarte. Zweispaltig auf Desktop, per CSS untereinander auf Mobil. */
-  function renderAvatarTab(body, p) {
-    var a = avatarOf(p);
-    var werte = arr(a.werte);
-
-    var html = '<div class="dlm-avatar-tab-grid">' +
-      renderAvatarBildSpalte(p) +
-      '<div class="dlm-avatar-profilspalte">';
-    if (!werte.length && p.analyse) {
-      html += '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" id="dlm-avatar-uebernehmen">' + esc(T.avatarUebernehmen) + '</button></div>';
-    }
-    html += '<form id="dlm-avatar-form" class="dlm-form dlm-avatar-form">' +
-      '<label class="dlm-field"><span>' + esc(T.avatarLabelName) + '</span><input type="text" name="name" value="' + esc(a.name || '') + '" maxlength="120"></label>' +
-      '<label class="dlm-field"><span>' + esc(T.avatarLabelAlter) + '</span><input type="number" name="alter" min="0" max="120" value="' + esc(a.alter || '') + '"></label>' +
-      '<label class="dlm-field"><span>' + esc(T.avatarLabelBeruf) + '</span><input type="text" name="beruf" value="' + esc(a.beruf || '') + '" maxlength="160"></label>' +
-      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelKurz) + '</span><textarea name="kurzbeschreibung" rows="3" maxlength="600">' + esc(a.kurzbeschreibung || '') + '</textarea></label>' +
-      /* Bewusst ein <div> statt <label>: ein <label> mit mehreren verschachtelten
-         Buttons (Chips entfernen, Vorschlaege) wuerde bei jedem Klick zusaetzlich
-         einen synthetischen Klick an sein erstes labelfaehiges Kind weiterreichen
-         (Browser-Label-Aktivierungsverhalten) und so versehentlich einen zweiten
-         Chip entfernen. */
-      '<div class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelWerte) + '</span>' +
-      '<div class="dlm-chip-input">' +
-      '<div class="dlm-chips" id="dlm-avatar-werte-chips">' + werteChipsHtml(werte) + '</div>' +
-      '<input type="text" id="dlm-avatar-werte-input" placeholder="' + esc(T.avatarWertePh) + '" maxlength="40">' +
-      '</div>' +
-      '<div class="dlm-chips dlm-chips-vorschlaege">' + AVATAR_WERTE_VORSCHLAEGE.map(function (w) {
-        return '<button type="button" class="dlm-chip dlm-filter-chip" data-werte-vorschlag="' + esc(w) + '">' + esc(w) + '</button>';
-      }).join('') + '</div></div>' +
-      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelZiele) + '</span><textarea name="ziele" rows="3" maxlength="1000" placeholder="' + esc(T.avatarZielePh) + '">' + esc(a.ziele || '') + '</textarea></label>' +
-      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelSorge) + '</span><textarea name="sorge" rows="3" maxlength="1000">' + esc(a.sorge || '') + '</textarea></label>' +
-      '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelAussehen) + '</span><textarea name="aussehen" rows="3" maxlength="1000" placeholder="' + esc(T.avatarAussehenPh) + '">' + esc(a.aussehen || '') + '</textarea></label>' +
-      '<label class="dlm-field"><span>' + esc(T.avatarLabelMotto) + '</span><input type="text" name="motto" value="' + esc(a.motto || '') + '" maxlength="200"></label>' +
-      '<p class="dlm-save-hint dlm-field-wide" id="dlm-avatar-savehint">&nbsp;</p>' +
-      '</form></div></div>';
-
-    html += renderAvatarVisitenkarte(p);
-    body.innerHTML = html;
-    wireAvatarForm(body, p);
-  }
-
-  function renderZielgruppeTab(body, p) {
-    if (p.analyse_status === 'laeuft') { renderAnalyseProgress(body, p); return; }
-    if (p.analyse_status !== 'fertig' || !p.analyse) {
-      body.innerHTML = '<div class="dlm-empty-block">' +
-        '<h3>' + esc(T.zielgruppeEmptyTitle) + '</h3><p>' + esc(T.zielgruppeEmptyText) + '</p>' +
-        '<button type="button" class="dlp-btn dlp-primary" data-action="run-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeCreate) + '</button>' +
-        '</div>';
-      return;
-    }
-    var analyse = p.analyse;
-    var html = renderAvatarZeile(p);
-    html += '<div class="dlm-toolbar">' +
-      '<button type="button" class="dlp-btn dlp-ghost" data-action="refine-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRefine) + '</button>' +
-      '<button type="button" class="dlp-btn dlp-ghost" data-action="redo-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRedo) + '</button>' +
-      '<button type="button" class="dlp-btn dlp-ghost" data-action="export-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeExport) + '</button>' +
-      '</div>';
-    html += '<nav class="dlm-jumpbar" id="dlm-jumpbar">' + ANALYSE_AREAS.map(function (area) {
-      return '<a class="dlm-chip dlm-jump-chip" href="#dlm-area-' + area.key + '">' + esc(area.label) + '</a>';
-    }).join('') + '</nav>';
-
-    var catIndex = 0;
-    ANALYSE_AREAS.forEach(function (area) {
-      html += '<h2 class="dlm-subtitle dlm-area-heading" id="dlm-area-' + area.key + '">' + esc(area.label) + '</h2>';
-      html += '<div class="dlm-accordion">';
-      area.cats.forEach(function (key) {
-        var fallbackTitle = (ANALYSE_CATS.filter(function (c) { return c[0] === key; })[0] || [key, key])[1];
-        var cat = analyse[key] || {};
-        var katTitel = (cat.titel && String(cat.titel).replace(/_/g, ' ').toLowerCase() !== key.replace(/_/g, ' ') && String(cat.titel).length > 3) ? cat.titel : fallbackTitle;
-        var open = catIndex < 2;
-        catIndex++;
-        var num = String(catIndex); if (num.length < 2) num = '0' + num;
-        html += '<div class="dlm-acc-item' + (open ? ' dlm-acc-open' : '') + '" data-cat="' + key + '">' +
-          '<button type="button" class="dlm-acc-head" data-action="toggle-acc">' +
-          '<span><span class="dlm-acc-num">' + num + '</span>' + esc(katTitel) + '</span>' +
-          '<svg class="dlm-acc-caret" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg>' +
-          '</button>' +
-          '<div class="dlm-acc-body">' +
-          '<div class="dlm-acc-view">' + mdMini(cat.inhalt) +
-          (arr(cat.punkte).length ? '<ul class="dlm-punkte">' + arr(cat.punkte).map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>' : '') +
-          '</div>' +
-          '<div class="dlm-acc-edit" hidden><textarea rows="8">' + esc(cat.inhalt || '') + '</textarea>' +
-          '<div class="dlm-acc-edit-actions"><button type="button" class="dlp-btn dlp-primary" data-action="save-cat" data-cat="' + key + '">' + esc(T.save) + '</button>' +
-          '<button type="button" class="dlp-btn dlp-ghost" data-action="cancel-cat">' + esc(T.cancel) + '</button></div></div>' +
-          '<div class="dlm-acc-actions">' +
-          '<button type="button" class="dlm-text-btn" data-action="edit-cat" data-cat="' + key + '">Bearbeiten</button>' +
-          '<button type="button" class="dlm-text-btn" data-action="copy-cat" data-cat="' + key + '">Kopieren</button>' +
-          '</div></div></div>';
-      });
-      html += '</div>';
-    });
-    body.innerHTML = html;
-  }
-
-  function renderAnalyseProgress(body, p) {
-    body.innerHTML = progressCardHtml('analyse');
-    wireProgressCancel('analyse', p.id, function () { /* Hinweis-Toast kommt aus jobRun/pollJob.cancel() */ });
-    startProgressRotation('analyse');
-  }
-
-  /* Basiskategorie fuer STATUS_TEXTS-Lookup, da Kinds wie "asset-creative"
-     nicht direkt in STATUS_TEXTS stehen (Absturzsicherheit). */
+  /* ------------------------------------------------------------------
+     16) Tab 2: Zielgruppe (Kurzprofil-Übersicht + Detailanalyse, SPEC §12.3)
+     ------------------------------------------------------------------ */
   function progressBaseKind(kind) {
     if (STATUS_TEXTS[kind]) return kind;
     if (kind.indexOf('asset-') === 0) return 'asset';
     return 'analyse';
   }
   function progressTitle(kind) {
-    if (kind === 'analyse') return 'Zielgruppenanalyse wird erstellt';
+    if (kind === 'kurzprofil') return T.kurzprofilRunningTitle;
+    if (kind === 'analyse') return 'Detailanalyse wird erstellt';
     if (kind === 'winkel') return 'Marketing-Winkel werden erzeugt';
+    if (kind === 'avatar_vorschlag') return T.avatarVorschlagenRunning;
     if (kind === 'konsistenz') return 'Konsistenz wird geprüft';
     if (kind === 'decode') return T.vorlagenDecoding;
     if (kind.indexOf('asset-') === 0) return assetLabel(kind.slice(6)) + ' werden erzeugt';
@@ -1618,7 +1558,7 @@
     var base = progressBaseKind(kind);
     return '<div class="dlm-progress-card">' +
       '<h3 class="dlm-progress-title">' + esc(progressTitle(kind)) + '</h3>' +
-      '<p class="dlm-progress-hint">Das dauert 2 bis 4 Minuten, du kannst währenddessen den Tab wechseln.</p>' +
+      '<p class="dlm-progress-hint">' + (kind === 'kurzprofil' ? esc(T.kurzprofilRunningHint) : 'Das dauert 1 bis 4 Minuten, du kannst währenddessen den Tab wechseln.') + '</p>' +
       '<div class="dlm-progress-bar dlm-progress-indeterminate"><div class="dlm-progress-fill" id="dlm-progress-fill-' + kind + '"></div></div>' +
       '<p class="dlm-progress-status" id="dlm-progress-status-' + kind + '">' + esc(STATUS_TEXTS[base][0]) + '</p>' +
       '<p class="dlm-progress-chars" id="dlm-progress-chars-' + kind + '">0 Zeichen</p>' +
@@ -1629,7 +1569,6 @@
   function startProgressRotation(kind) {
     var idx = 0;
     var list = STATUS_TEXTS[progressBaseKind(kind)];
-    var el = $('dlm-progress-status-' + kind);
     var timer = setInterval(function () {
       idx = (idx + 1) % list.length;
       var e = $('dlm-progress-status-' + kind);
@@ -1646,7 +1585,6 @@
     var fill = $('dlm-progress-fill-' + kind);
     if (fill) fill.style.width = Math.min(96, 8 + n / 80) + '%';
   }
-  // Zeigt bei mehrteiligen Jobs (Analyse: 4 Teile) den Fortschritt "Teil x von 4 fertig".
   function updateProgressTeil(kind, teil, teile) {
     var el = $('dlm-progress-teil-' + kind);
     if (!el) return;
@@ -1657,25 +1595,16 @@
       el.hidden = true;
     }
   }
-  function wireProgressCancel(kind, id, onCancel) {
-    var btn = qs('[data-action="cancel-run"][data-kind="' + kind + '"]');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      var r = STATE.running[kind + '-' + id];
-      if (r && r.cancel) r.cancel();
-      stopProgressRotation(kind);
-      if (onCancel) onCancel();
-    });
-  }
-  // Bricht das Polling fuer einen Job-Schluessel ab (der Hintergrund-Lauf laeuft weiter).
   function cancelRunning(key) {
     var r = STATE.running[key];
     if (r && r.cancel) r.cancel();
     delete STATE.running[key];
   }
   function progressKindFromJob(job) {
+    if (job.task === 'kurzprofil') return 'kurzprofil';
     if (job.task === 'analyse' || job.task === 'verfeinern') return 'analyse';
     if (job.task === 'winkel') return 'winkel';
+    if (job.task === 'avatar_vorschlag') return 'avatar_vorschlag';
     if (job.task === 'konsistenz') return 'konsistenz';
     if (job.task === 'decode') return 'decode';
     if (job.task === 'asset') return 'asset-' + job.typ;
@@ -1683,16 +1612,12 @@
   }
   function runningKeyFromJob(job) {
     var kind = progressKindFromJob(job);
-    if (kind === 'analyse') return 'analyse-' + job.project_id;
-    if (kind === 'winkel') return 'winkel-' + job.project_id;
+    if (kind === 'kurzprofil' || kind === 'analyse' || kind === 'winkel' || kind === 'avatar_vorschlag') return kind + '-' + job.project_id;
     if (kind === 'konsistenz') return 'konsistenz-' + job.campaign_id;
     if (kind === 'decode') return 'decode-' + job.template_id;
     if (kind.indexOf('asset-') === 0) return 'asset-' + job.campaign_id + '-' + job.typ;
     return kind + '-' + job.id;
   }
-  // Erkennt beim Oeffnen eines Projekts/einer Kampagne noch laufende Jobs (Neuladen der
-  // Seite waehrend ein Hintergrund-Lauf noch geht) und haengt sich wieder an sie an, damit
-  // die Fortschrittskarte weiter aktualisiert wird (SPEC §F).
   function resumeRunningJobs(projectId, campaignId, rerender) {
     DB.get('me_jobs?select=*&status=in.(wartet,laeuft)&order=created_at.desc&limit=20').then(function (jobs) {
       arr(jobs).forEach(function (job) {
@@ -1718,8 +1643,6 @@
         });
       });
     }).catch(function () {});
-    // Fehlgeschlagene Laeufe der letzten 30 Minuten einmal pro Sitzung melden, damit ein
-    // Fehler nach Neuladen oder Tab-Wechsel nicht still verschwindet.
     var seit = new Date(Date.now() - 30 * 60000).toISOString();
     DB.get('me_jobs?select=id,task,typ,fehler,project_id,campaign_id,updated_at&status=eq.fehler&updated_at=gt.' + encodeURIComponent(seit) + '&order=updated_at.desc&limit=5').then(function (jobs) {
       STATE.seenFailed = STATE.seenFailed || {};
@@ -1733,37 +1656,237 @@
       if (!neu.length) return;
       var namen = [];
       neu.forEach(function (job) {
-        var was = job.task === 'winkel' ? 'Winkel' : job.task === 'konsistenz' ? 'Konsistenz-Check' : job.task === 'asset' ? assetLabel(job.typ) : job.task === 'decode' ? 'Creative-Decoder' : 'Zielgruppenanalyse';
+        var was = job.task === 'kurzprofil' ? 'Kurzprofil' : job.task === 'winkel' ? 'Winkel' : job.task === 'avatar_vorschlag' ? 'Avatar-Vorschlag' :
+          job.task === 'konsistenz' ? 'Konsistenz-Check' : job.task === 'asset' ? assetLabel(job.typ) : job.task === 'decode' ? 'Creative-Decoder' : 'Detailanalyse';
         if (namen.indexOf(was) < 0) namen.push(was);
       });
       toast((neu.length === 1 ? namen[0] + ' ist fehlgeschlagen: ' + (neu[0].fehler || T.genericError) : 'Einige Läufe sind fehlgeschlagen (' + namen.join(', ') + '): ' + (neu[0].fehler || T.genericError)) + ' Bitte starte sie noch einmal.');
     }).catch(function () {});
   }
 
-  function runAnalyse(id, opts) {
-    opts = opts || {};
+  function runKurzprofil(id) {
+    STATE.running['kurzprofil-' + id] = { pending: true };
+    renderZielgruppeRoute(parseHash());
+    var run = AI.run({ uid: STATE.profile.uid, task: 'kurzprofil', project_id: id }, {
+      onProgress: function (job) { updateProgressChars('kurzprofil', job.chars || 0); }
+    });
+    STATE.running['kurzprofil-' + id] = { cancel: run.cancel };
+    startProgressRotation('kurzprofil');
+    run.promise.then(function () {
+      delete STATE.running['kurzprofil-' + id];
+      stopProgressRotation('kurzprofil');
+      /* Das Backend startet danach automatisch die Detailanalyse (eigener Job);
+         ein kurzer Aufschub gibt ihr Zeit, angelegt zu werden, bevor resumeRunningJobs
+         beim naechsten Rendern danach sucht. */
+      setTimeout(function () { renderZielgruppeRoute(parseHash()); }, 1200);
+    }).catch(function (err) {
+      delete STATE.running['kurzprofil-' + id];
+      stopProgressRotation('kurzprofil');
+      toast(err && err.message ? err.message : T.genericError);
+      renderZielgruppeRoute(parseHash());
+    });
+  }
+
+  function runAnalyseTask(id, task, hinweis) {
     STATE.running['analyse-' + id] = { pending: true };
-    renderProjectRoute(parseHash());
-    var run = AI.run({ uid: STATE.profile.uid, task: 'analyse', project_id: id, hinweis: opts.hinweis || undefined }, {
+    renderZielgruppeRoute(parseHash());
+    var run = AI.run({ uid: STATE.profile.uid, task: task, project_id: id, hinweis: hinweis || undefined }, {
       onProgress: function (job) {
         updateProgressChars('analyse', job.chars || 0);
         updateProgressTeil('analyse', job.teil_fertig, job.teile);
       }
     });
     STATE.running['analyse-' + id] = { cancel: run.cancel };
+    startProgressRotation('analyse');
     run.promise.then(function () {
       delete STATE.running['analyse-' + id];
       stopProgressRotation('analyse');
-      renderProjectRoute(parseHash());
+      renderZielgruppeRoute(parseHash());
     }).catch(function (err) {
       delete STATE.running['analyse-' + id];
       stopProgressRotation('analyse');
       toast(err && err.message ? err.message : T.genericError);
-      renderProjectRoute(parseHash());
+      renderZielgruppeRoute(parseHash());
     });
   }
 
-  /* --- Winkel -------------------------------------------------------- */
+  /* --- Kurzprofil-Übersicht ------------------------------------------ */
+  function renderKurzprofilUebersicht(kp) {
+    kp = kp || {};
+    var steckbrief = kp.steckbrief || {};
+    var html = '<div class="dlm-kurzprofil">';
+    html += '<div class="dlm-steckbrief-card">' +
+      '<div class="dlm-steckbrief-row"><strong>' + esc(steckbrief.wer || 'Nicht vorhanden') + '</strong></div>' +
+      '<div class="dlm-chips">' +
+      (steckbrief.alter ? '<span class="dlm-chip">' + esc(steckbrief.alter) + '</span>' : '') +
+      (steckbrief.situation ? '<span class="dlm-chip">' + esc(steckbrief.situation) + '</span>' : '') +
+      (steckbrief.einkommen_niveau ? '<span class="dlm-chip">' + esc(steckbrief.einkommen_niveau) + '</span>' : '') +
+      (steckbrief.entscheidet ? '<span class="dlm-chip">Entscheidet: ' + esc(steckbrief.entscheidet) + '</span>' : '') +
+      '</div></div>';
+
+    function triCol(title, items, satzKey, titelKey) {
+      return '<div class="dlm-tri-col"><h4>' + esc(title) + '</h4>' + arr(items).map(function (it) {
+        it = it || {};
+        return '<div class="dlm-tri-card"><strong>' + esc(it[titelKey] || '') + '</strong><p>' + esc(it[satzKey] || '') + '</p></div>';
+      }).join('') + '</div>';
+    }
+    html += '<div class="dlm-tri-grid">' +
+      triCol('Schmerzen', kp.schmerzen, 'satz', 'titel') +
+      triCol('Wünsche', kp.wuensche, 'satz', 'titel') +
+      (function () {
+        return '<div class="dlm-tri-col"><h4>Situationen</h4>' + arr(kp.situationen).map(function (it) {
+          it = it || {};
+          return '<div class="dlm-tri-card"><strong>' + esc(it.wann_wo || '') + '</strong><p>' + esc(it.was_passiert || '') + '</p></div>';
+        }).join('') + '</div>';
+      })() +
+      '</div>';
+
+    var awareness = kp.awareness || {}, markt = kp.markt || {};
+    html += '<div class="dlm-badge-row">' +
+      (awareness.stufe ? '<span class="dlm-badge">Awareness: ' + esc(awareness.stufe) + (awareness.begruendung ? ' · ' + esc(awareness.begruendung) : '') + '</span>' : '') +
+      (markt.saettigung ? '<span class="dlm-badge">Markt: ' + esc(markt.saettigung) + (markt.satz ? ' · ' + esc(markt.satz) : '') + '</span>' : '') +
+      '</div>';
+
+    if (arr(kp.zitate).length) {
+      html += '<h4 class="dlm-subtitle-sm">Zitate</h4><div class="dlm-zitate-row">' +
+        arr(kp.zitate).map(function (z) { return '<div class="dlm-sprechblase">' + esc(z) + '</div>'; }).join('') + '</div>';
+    }
+
+    if (arr(kp.einwaende).length) {
+      html += '<h4 class="dlm-subtitle-sm">Einwände</h4><div class="dlm-accordion">' +
+        arr(kp.einwaende).map(function (e, i) {
+          e = e || {};
+          return '<div class="dlm-acc-item' + (i === 0 ? ' dlm-acc-open' : '') + '">' +
+            '<button type="button" class="dlm-acc-head" data-action="toggle-acc"><span>' + esc(e.einwand || '') + '</span>' +
+            '<svg class="dlm-acc-caret" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></button>' +
+            '<div class="dlm-acc-body"><div class="dlm-acc-view"><p><strong>' + esc(T.einwaendeAntwortIdee) + ':</strong> ' + esc(e.antwort_idee || '') + '</p></div></div></div>';
+        }).join('') + '</div>';
+    }
+
+    html += '<div class="dlm-chips-row2">' +
+      (arr(kp.kaufausloeser).length ? '<div><h4 class="dlm-subtitle-sm">Kaufauslöser</h4><div class="dlm-chips">' + arr(kp.kaufausloeser).map(function (k) { return '<span class="dlm-chip">' + esc(k) + '</span>'; }).join('') + '</div></div>' : '') +
+      (arr(kp.kanaele).length ? '<div><h4 class="dlm-subtitle-sm">Kanäle</h4><div class="dlm-chips">' + arr(kp.kanaele).map(function (k) { return '<span class="dlm-chip">' + esc(k) + '</span>'; }).join('') + '</div></div>' : '') +
+      '</div>';
+
+    if (kp.ein_satz) html += '<div class="dlm-ein-satz">' + esc(kp.ein_satz) + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  /* --- Detailanalyse: Kategorie-Karten (SPEC §12.3) -------------------- */
+  function catSkeletonHtml() {
+    return '<div class="dlm-skeleton-card"><div class="dlm-skeleton-line dlm-skeleton-w60"></div>' +
+      '<div class="dlm-skeleton-line dlm-skeleton-w90"></div><div class="dlm-skeleton-line dlm-skeleton-w75"></div>' +
+      '<p class="dlm-muted dlm-small">' + esc(T.teilWirdErstellt) + '</p></div>';
+  }
+  function catFehlerHtml(key) {
+    return '<div class="dlm-cat-fehler"><p class="dlm-muted">' + esc(T.teilFehler) + '</p>' +
+      '<button type="button" class="dlp-btn dlp-ghost dlm-small-btn" data-action="retry-teil" data-cat="' + esc(key) + '">' + esc(T.teilRetry) + '</button></div>';
+  }
+  function paareTableHtml(paare) {
+    if (!arr(paare).length) return '';
+    return '<table class="dlm-table dlm-paare-table"><thead><tr><th>' + esc(T.wegVonSpalte) + '</th><th>' + esc(T.hinZuSpalte) + '</th></tr></thead><tbody>' +
+      arr(paare).map(function (pr) {
+        pr = pr || {};
+        return '<tr><td>' + esc(pr.weg_von || '') + '</td><td>' + esc(pr.hin_zu || '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function zahlTileHtml(zahl) {
+    if (!zahl || (!zahl.wert && zahl.wert !== 0)) return '';
+    return '<div class="dlm-zahl-tile"><span class="dlm-zahl-wert">' + esc(zahl.wert) + (zahl.einheit ? ' ' + esc(zahl.einheit) : '') + '</span>' +
+      (zahl.label ? '<span class="dlm-zahl-label">' + esc(zahl.label) + '</span>' : '') + '</div>';
+  }
+
+  /* Rendert eine Kategorie-Karte. teilStatus: 'fertig' | 'fehler' | undefined (noch nicht dran). */
+  function renderCategoryCard(key, fallbackTitle, cat, teilStatus, detailliert, catIndex) {
+    if (!cat && teilStatus === 'fehler') return '<div class="dlm-cat-card" data-cat="' + key + '">' + catFehlerHtml(key) + '</div>';
+    if (!cat && teilStatus !== 'fertig') return '<div class="dlm-cat-card">' + catSkeletonHtml() + '</div>';
+    cat = cat || {};
+    var titel = (cat.titel && String(cat.titel).replace(/_/g, ' ').toLowerCase() !== key.replace(/_/g, ' ') && String(cat.titel).length > 3) ? cat.titel : fallbackTitle;
+    var kern = arr(cat.kern);
+    var num = String(catIndex); if (num.length < 2) num = '0' + num;
+    var html = '<div class="dlm-cat-card" data-cat="' + key + '">' +
+      '<div class="dlm-cat-head"><span class="dlm-acc-num">' + num + '</span><h4>' + esc(titel) + '</h4></div>' +
+      zahlTileHtml(cat.zahl);
+    html += '<div class="dlm-cat-view">';
+    if (kern.length) {
+      html += '<ul class="dlm-kern-list">' + kern.map(function (k) { return '<li>' + inlineMd(k) + '</li>'; }).join('') + '</ul>';
+    }
+    var showInhalt = detailliert || !kern.length;
+    if (showInhalt) html += mdMini(cat.inhalt);
+    if (arr(cat.punkte).length) html += '<ul class="dlm-punkte">' + arr(cat.punkte).map(function (pt) { return '<li>' + esc(pt) + '</li>'; }).join('') + '</ul>';
+    if (key === 'hin_zu' && arr(cat.paare).length) html += paareTableHtml(cat.paare);
+    html += '</div>';
+    html += '<div class="dlm-acc-edit" hidden><textarea class="dlm-cat-edit-kern" rows="4" placeholder="Ein Stichpunkt je Zeile">' + esc(kern.join('\n')) + '</textarea>' +
+      '<textarea class="dlm-cat-edit-inhalt" rows="6">' + esc(cat.inhalt || '') + '</textarea>' +
+      '<div class="dlm-acc-edit-actions"><button type="button" class="dlp-btn dlp-primary" data-action="save-cat" data-cat="' + key + '">' + esc(T.save) + '</button>' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="cancel-cat">' + esc(T.cancel) + '</button></div></div>';
+    html += '<div class="dlm-acc-actions">' +
+      '<button type="button" class="dlm-text-btn" data-action="edit-cat" data-cat="' + key + '">Bearbeiten</button>' +
+      '<button type="button" class="dlm-text-btn" data-action="copy-cat" data-cat="' + key + '">Kopieren</button>' +
+      '</div></div>';
+    return html;
+  }
+
+  function renderDetailanalyse(p) {
+    var analyse = p.analyse || {};
+    var teile = p.analyse_teile || {};
+    var modus = STATE.analyseModus;
+    var html = '<h2 class="dlm-subtitle" id="dlm-detailanalyse">' + esc(T.detailanalyseTitle) + '</h2>';
+    html += '<div class="dlm-modus-toggle" role="group" aria-label="Ansicht">' +
+      '<button type="button" class="dlm-modus-btn' + (modus === 'einfach' ? ' dlm-modus-active' : '') + '" data-modus="einfach">' + esc(T.modusEinfach) + '</button>' +
+      '<button type="button" class="dlm-modus-btn' + (modus === 'detailliert' ? ' dlm-modus-active' : '') + '" data-modus="detailliert">' + esc(T.modusDetailliert) + '</button>' +
+      '</div>';
+    html += '<nav class="dlm-jumpbar" id="dlm-jumpbar">' + ANALYSE_AREAS.map(function (area) {
+      return '<a class="dlm-chip dlm-jump-chip" href="#dlm-area-' + area.key + '">' + esc(area.label) + '</a>';
+    }).join('') + '</nav>';
+
+    var catIndex = 0;
+    ANALYSE_AREAS.forEach(function (area) {
+      html += '<h3 class="dlm-subtitle dlm-area-heading" id="dlm-area-' + area.key + '">' + esc(area.label) + '</h3>';
+      html += '<div class="dlm-cat-grid">';
+      area.cats.forEach(function (key) {
+        var fallbackTitle = (ANALYSE_CATS.filter(function (c) { return c[0] === key; })[0] || [key, key])[1];
+        var teilKey = CAT_TEIL[key];
+        var teilStatus = teile[teilKey];
+        var hasCat = analyse[key] && typeof analyse[key] === 'object';
+        catIndex++;
+        html += renderCategoryCard(key, fallbackTitle, hasCat ? analyse[key] : null, hasCat ? 'fertig' : teilStatus, modus === 'detailliert', catIndex);
+      });
+      html += '</div>';
+    });
+    return html;
+  }
+
+  function renderZielgruppeTab(body, p) {
+    var html = '';
+    if (p.kurzprofil_status === 'laeuft') {
+      body.innerHTML = progressCardHtml('kurzprofil');
+      startProgressRotation('kurzprofil');
+      return;
+    }
+    if (p.kurzprofil_status !== 'fertig' || !p.kurzprofil) {
+      body.innerHTML = '<div class="dlm-empty-block">' +
+        '<h3>' + esc(T.kurzprofilEmptyTitle) + '</h3><p>' + esc(T.kurzprofilEmptyText) + '</p>' +
+        '<button type="button" class="dlp-btn dlp-primary" data-action="run-kurzprofil" data-id="' + esc(p.id) + '">' + esc(T.kurzprofilCreate) + '</button>' +
+        '</div>';
+      return;
+    }
+    html += renderKurzprofilUebersicht(p.kurzprofil);
+    html += '<div class="dlm-toolbar">' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="refine-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRefine) + '</button>' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="redo-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeRedo) + '</button>' +
+      '<button type="button" class="dlp-btn dlp-ghost" data-action="export-analyse" data-id="' + esc(p.id) + '">' + esc(T.zielgruppeExport) + '</button>' +
+      '</div>';
+    if (STATE.running['analyse-' + p.id]) {
+      html += progressCardHtml('analyse');
+    }
+    html += renderDetailanalyse(p);
+    body.innerHTML = html;
+    if (STATE.running['analyse-' + p.id]) startProgressRotation('analyse');
+  }
+
+  /* --- Tab 3: Winkel (unveraendert gegenueber 1.2, SPEC §11.5) --------- */
   function winkelHasOldFields(w) {
     return !!(w.hook_beispiel || w.warum_wirkt || w.bezug || w.risiko || w.treiber || (Array.isArray(w.formate) && w.formate.length));
   }
@@ -1793,10 +1916,9 @@
       '</div></div>';
   }
 
-  /* Winkel-Ansicht gruppiert nach 5 Awareness-Stufen (SPEC §11.5). */
   function renderWinkelTab(body, p) {
     var st = tabStatus(p);
-    if (!st.zielgruppe) {
+    if (!st.winkel) {
       body.innerHTML = '<div class="dlm-empty-block"><p>' + esc(T.needAnalyse) + '</p></div>';
       return;
     }
@@ -1839,7 +1961,7 @@
   function runWinkel(id, mehr, awareness) {
     var key = mehr ? ('winkel-' + id + '-' + awareness) : ('winkel-' + id);
     STATE.running[key] = { pending: true };
-    renderProjectRoute(parseHash());
+    renderZielgruppeRoute(parseHash());
     var payload = { uid: STATE.profile.uid, task: 'winkel', project_id: id, mehr: !!mehr };
     if (mehr) payload.awareness = awareness;
     var run = AI.run(payload, {
@@ -1850,12 +1972,12 @@
     run.promise.then(function () {
       delete STATE.running[key];
       stopProgressRotation('winkel');
-      renderProjectRoute(parseHash());
+      renderZielgruppeRoute(parseHash());
     }).catch(function (err) {
       delete STATE.running[key];
       stopProgressRotation('winkel');
       toast(err && err.message ? err.message : T.genericError);
-      renderProjectRoute(parseHash());
+      renderZielgruppeRoute(parseHash());
     });
   }
 
@@ -1864,33 +1986,493 @@
     var auswahl = arr(p.winkel_auswahl).slice();
     var idx = auswahl.indexOf(winkelId);
     if (checked && idx === -1) {
-      if (auswahl.length >= 10) { toast(T.winkelCountOver); renderProjectRoute(parseHash()); return; }
+      if (auswahl.length >= 10) { toast(T.winkelCountOver); renderZielgruppeRoute(parseHash()); return; }
       auswahl.push(winkelId);
     } else if (!checked && idx !== -1) {
       auswahl.splice(idx, 1);
     }
     p.winkel_auswahl = auswahl;
     DB.patch('me_projects?id=eq.' + projectId, { winkel_auswahl: auswahl }).then(function () {
-      renderProjectRoute(parseHash());
+      renderZielgruppeRoute(parseHash());
     });
   }
 
-  /* --- Kampagnen ------------------------------------------------------ */
-  function renderKampagnenTab(body, p) {
+  /* ------------------------------------------------------------------
+     17) Tab 4: Avatare (me_avatare, SPEC §12.2/§12.4)
+     ------------------------------------------------------------------ */
+  function avatarCardHtml(a) {
+    var profil = avRowProfil(a);
+    var berufZeile = [profil.alter ? (profil.alter + ' Jahre') : '', profil.beruf || ''].filter(Boolean).join(' · ');
+    return '<div class="dlp-card dlm-avatar-card" data-open-avatar="' + esc(a.id) + '">' +
+      '<div class="dlm-card-menu"><button type="button" class="dlm-icon-btn" data-action="avatar-menu" data-id="' + esc(a.id) + '" aria-label="Menü">' +
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></button></div>' +
+      '<div class="dlm-avatar-card-head">' + avRowPicHtml(a, 56) +
+      '<div><h3 class="dlm-project-title"><span>' + esc(a.name || 'Ohne Namen') + '</span></h3>' +
+      (berufZeile ? '<p class="dlm-muted dlm-small">' + esc(berufZeile) + '</p>' : '') +
+      (profil.motto ? '<p class="dlm-avatar-motto-mini">&raquo;' + esc(profil.motto) + '&laquo;</p>' : '') + '</div></div>' +
+      '</div>';
+  }
+
+  function renderAvatareTab(body, p) {
     var st = tabStatus(p);
-    if (!st.kampagnen) {
-      body.innerHTML = '<div class="dlm-empty-block"><p>' + esc(T.needFiveWinkel) + '</p></div>';
+    if (!st.avatare) {
+      body.innerHTML = '<div class="dlm-empty-block"><p>' + esc(T.needAnalyse) + '</p></div>';
       return;
     }
-    body.innerHTML = '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-primary" data-action="new-campaign" data-id="' + esc(p.id) + '">' + esc(T.kampagneNew) + '</button></div>' +
+    var running = !!STATE.running['avatar_vorschlag-' + p.id];
+    body.innerHTML = '<div class="dlm-toolbar">' +
+      '<button type="button" class="dlp-btn dlp-primary" data-action="new-avatar" data-id="' + esc(p.id) + '">' + esc(T.avatarNewCard) + '</button>' +
+      (running ? '' : '<button type="button" class="dlp-btn dlp-ghost" data-action="run-avatar-vorschlag" data-id="' + esc(p.id) + '">' + esc(T.avatarVorschlagen) + '</button>') +
+      '</div>' +
+      (running ? progressCardHtml('avatar_vorschlag') : '') +
+      '<div id="dlm-avatare-grid" class="dlm-grid"><div class="dlm-loading">Lädt...</div></div>';
+    if (running) startProgressRotation('avatar_vorschlag');
+
+    DB.get('me_avatare?select=*&project_id=eq.' + p.id + '&order=created_at.desc').then(function (rows) {
+      STATE.avatare = rows || [];
+      var grid = $('dlm-avatare-grid');
+      if (!grid) return;
+      if (!STATE.avatare.length) {
+        grid.innerHTML = '<div class="dlm-empty-block"><h3>' + esc(T.avatareEmptyTitle) + '</h3><p>' + esc(T.avatareEmptyText) + '</p></div>';
+        return;
+      }
+      grid.innerHTML = STATE.avatare.map(avatarCardHtml).join('');
+      qsa('[data-open-avatar]', grid).forEach(function (el) {
+        el.addEventListener('click', function (e) {
+          if (e.target.closest('[data-action="avatar-menu"]')) return;
+          location.hash = '#/z/' + p.id + '/a/' + el.getAttribute('data-open-avatar');
+        });
+      });
+    }).catch(function () {
+      var grid = $('dlm-avatare-grid');
+      if (grid) grid.innerHTML = '<div class="dlm-empty">' + esc(T.genericError) + '</div>';
+    });
+  }
+
+  function openNewAvatarDialog(projectId) {
+    dialog({
+      title: T.avatarNewTitle,
+      body: '<label class="dlm-field"><span>' + esc(T.avatarLabelName) + '</span><input type="text" id="dlm-new-avatar-name" maxlength="120"></label>',
+      actions: [
+        { label: T.cancel },
+        {
+          label: T.create, primary: true, onClick: function () {
+            var name = qs('#dlm-new-avatar-name').value.trim();
+            if (!name) { toast('Bitte einen Namen eingeben.'); return false; }
+            DB.post('me_avatare', { project_id: projectId, name: name, profil: {} }, 'return=representation').then(function (rows) {
+              var a = rows && rows[0];
+              if (a) location.hash = '#/z/' + projectId + '/a/' + a.id;
+            });
+          }
+        }
+      ]
+    });
+  }
+
+  function openAvatarMenu(id) {
+    var a = arr(STATE.avatare).filter(function (x) { return x.id === id; })[0];
+    dialog({
+      title: a ? (a.name || 'Avatar') : 'Avatar',
+      body: '<label class="dlm-field"><span>' + esc(T.rename) + '</span><input type="text" id="dlm-avatar-rename-input" value="' + esc(a ? a.name : '') + '"></label>',
+      actions: [
+        { label: T.cancel },
+        {
+          label: T.delete, onClick: function () {
+            confirmDialog(T.avatarDeleteConfirm, function () {
+              DB.del('me_avatare?id=eq.' + id).then(function () { renderAvatareTab($('dlm-tab-body'), STATE.project); });
+            });
+            return false;
+          }
+        },
+        {
+          label: T.save, primary: true, onClick: function () {
+            var name = qs('#dlm-avatar-rename-input').value.trim();
+            if (!name) return false;
+            DB.patch('me_avatare?id=eq.' + id, { name: name }).then(function () { renderAvatareTab($('dlm-tab-body'), STATE.project); });
+          }
+        }
+      ]
+    });
+  }
+
+  function runAvatarVorschlag(projectId) {
+    STATE.running['avatar_vorschlag-' + projectId] = { pending: true };
+    renderZielgruppeRoute(parseHash());
+    var run = AI.run({ uid: STATE.profile.uid, task: 'avatar_vorschlag', project_id: projectId }, {
+      onProgress: function (job) { updateProgressChars('avatar_vorschlag', job.chars || 0); }
+    });
+    STATE.running['avatar_vorschlag-' + projectId] = { cancel: run.cancel };
+    startProgressRotation('avatar_vorschlag');
+    run.promise.then(function () {
+      delete STATE.running['avatar_vorschlag-' + projectId];
+      stopProgressRotation('avatar_vorschlag');
+      renderZielgruppeRoute(parseHash());
+    }).catch(function (err) {
+      delete STATE.running['avatar_vorschlag-' + projectId];
+      stopProgressRotation('avatar_vorschlag');
+      toast(err && err.message ? err.message : T.genericError);
+      renderZielgruppeRoute(parseHash());
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     18) Route: Avatar-Profil (#/z/<id>/a/<aid>)
+     ------------------------------------------------------------------ */
+  function avatarSlotHtml(a, stil, label) {
+    var bilder = Array.isArray(a.bilder) ? a.bilder : [];
+    var eintrag = bilder.filter(function (b) { return b && b.stil === stil; })[0];
+    var running = !!STATE.running['avatarbild-' + a.id + '-' + stil];
+    var chosen = a.gewaehlt === stil;
+    return '<div class="dlm-avatar-slot' + (chosen ? ' dlm-avatar-slot-chosen' : '') + '">' +
+      (running
+        ? '<div class="dlm-avatar-slot-ph">' + esc(T.avatarBildLaeuft) + '</div>'
+        : (eintrag && eintrag.url
+          ? '<button type="button" class="dlm-avatar-slot-img" data-action="choose-avatar-bild" data-stil="' + esc(stil) + '"><img src="' + esc(eintrag.url) + '" alt=""></button>'
+          : '<div class="dlm-avatar-slot-ph">' + esc(label) + '</div>')) +
+      '<div class="dlm-avatar-slot-foot"><span class="dlm-small">' + esc(label) + (chosen ? ' · gewählt' : '') + '</span>' +
+      (!running ? '<button type="button" class="dlm-text-btn" data-action="gen-avatar-bild" data-stil="' + esc(stil) + '">' + esc(T.avatarBildErzeugen) + '</button>' : '') +
+      '</div></div>';
+  }
+  function renderAvatarBildSpalte(a) {
+    var html = '<div class="dlm-avatar-bildspalte"><div class="dlm-avatar-big-pic">' + avRowPicHtml(a, 260) + '</div>';
+    var profil = avRowProfil(a);
+    var hatGrundlage = profil.bild_prompt || profil.alter || profil.beruf || profil.aussehen;
+    if (!hatGrundlage) {
+      html += '<p class="dlm-muted dlm-small">' + esc(T.avatarBilderHint) + '</p>';
+    } else {
+      html += '<div class="dlm-avatar-slots">' + AVATAR_STILE.map(function (s) { return avatarSlotHtml(a, s[0], s[1]); }).join('') + '</div>' +
+        '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" data-action="gen-avatar-bild-all">' + esc(T.avatarBilderAlle) + '</button></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function werteChipsHtml(werte) {
+    return werte.map(function (w, i) {
+      return '<span class="dlm-chip dlm-chip-removable">' + esc(w) +
+        '<button type="button" class="dlm-chip-x" data-werte-remove="' + i + '" aria-label="Entfernen">&times;</button></span>';
+    }).join('');
+  }
+
+  function renderAvatarVisitenkarte(a) {
+    var profil = avRowProfil(a);
+    var berufZeile = [profil.alter ? (profil.alter + ' Jahre') : '', profil.beruf || ''].filter(Boolean).join(' · ');
+    return '<div class="dlm-avatar-visitenkarte" id="dlm-avatar-visitenkarte">' +
+      '<h3 class="dlm-subtitle" style="margin-top:0;">' + esc(T.avatarVisitenkarteTitel) + '</h3>' +
+      '<div class="dlm-avatar-visitenkarte-head">' + avRowPicHtml(a, 72) +
+      '<div><h3 class="dlm-title" style="margin:0;">' + esc(a.name || '') + '</h3>' +
+      (berufZeile ? '<p class="dlm-muted">' + esc(berufZeile) + '</p>' : '') +
+      (profil.motto ? '<p class="dlm-avatar-motto">&raquo;' + esc(profil.motto) + '&laquo;</p>' : '') +
+      '</div></div>' +
+      (arr(profil.werte).length ? '<div class="dlm-chips">' + arr(profil.werte).map(function (w) { return '<span class="dlm-chip">' + esc(w) + '</span>'; }).join('') + '</div>' : '') +
+      (profil.kurzbeschreibung ? '<p class="dlm-avatar-kurz">' + esc(profil.kurzbeschreibung) + '</p>' : '') +
+      '</div>';
+  }
+  function refreshAvatarVisitenkarte(a) {
+    var el = $('dlm-avatar-visitenkarte');
+    if (el) el.outerHTML = renderAvatarVisitenkarte(a);
+  }
+
+  function avatarFormValues(form, werte) {
+    return {
+      alter: form.elements.alter.value ? Number(form.elements.alter.value) : null,
+      beruf: form.elements.beruf.value.trim(),
+      kurzbeschreibung: form.elements.kurzbeschreibung.value,
+      werte: werte.slice(),
+      ziele: form.elements.ziele.value,
+      sorge: form.elements.sorge.value,
+      aussehen: form.elements.aussehen.value,
+      motto: form.elements.motto.value.trim()
+    };
+  }
+
+  function saveAvatarForm(a, form, werte, hintEl) {
+    var name = form.elements.name.value.trim();
+    var fields = avatarFormValues(form, werte);
+    DB.get('me_avatare?select=id,profil&id=eq.' + a.id).then(function (rows) {
+      var fresh = rows && rows[0];
+      var freshProfil = fresh ? avRowProfil(fresh) : avRowProfil(a);
+      var merged = Object.assign({}, freshProfil, fields);
+      return DB.patch('me_avatare?id=eq.' + a.id, { name: name || a.name, profil: merged }).then(function () {
+        a.name = name || a.name;
+        a.profil = merged;
+        if (STATE.avatar && STATE.avatar.id === a.id) { STATE.avatar.name = a.name; STATE.avatar.profil = merged; }
+        if (hintEl) hintEl.textContent = T.avatarGespeichert + ' ' + new Date().toLocaleTimeString('de-DE');
+        refreshAvatarVisitenkarte(a);
+      });
+    }).catch(function () { toast(T.genericError); });
+  }
+
+  function wireAvatarForm(body, a, p) {
+    var form = $('dlm-avatar-form');
+    if (!form) return;
+    var werte = arr(avRowProfil(a).werte).slice();
+    var hint = $('dlm-avatar-savehint');
+    var debouncedSave = debounce(function () { saveAvatarForm(a, form, werte, hint); }, 800);
+
+    function rerenderChips() {
+      var box = $('dlm-avatar-werte-chips');
+      if (box) box.innerHTML = werteChipsHtml(werte);
+    }
+    function chipExists(val) {
+      return werte.map(function (w) { return w.toLowerCase(); }).indexOf(val.toLowerCase()) !== -1;
+    }
+
+    form.addEventListener('input', debouncedSave);
+    form.addEventListener('change', debouncedSave);
+    form.addEventListener('submit', function (e) { e.preventDefault(); });
+
+    var werteInput = $('dlm-avatar-werte-input');
+    if (werteInput) {
+      werteInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          var val = werteInput.value.replace(/,$/, '').trim();
+          werteInput.value = '';
+          if (val && !chipExists(val)) { werte.push(val); rerenderChips(); debouncedSave(); }
+        }
+      });
+    }
+    var chipsBox = $('dlm-avatar-werte-chips');
+    if (chipsBox) {
+      chipsBox.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-werte-remove]');
+        if (!btn) return;
+        werte.splice(Number(btn.getAttribute('data-werte-remove')), 1);
+        rerenderChips();
+        debouncedSave();
+      });
+    }
+    qsa('[data-werte-vorschlag]', body).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-werte-vorschlag');
+        if (!chipExists(val)) { werte.push(val); rerenderChips(); debouncedSave(); }
+      });
+    });
+
+    var uebBtn = $('dlm-avatar-uebernehmen');
+    if (uebBtn) {
+      uebBtn.addEventListener('click', function () {
+        var kp = p.kurzprofil || {};
+        var analyse = p.analyse || {};
+        var wunschPunkte = arr(kp.wuensche).map(function (w) { return w && w.satz; }).filter(Boolean);
+        var schmerzPunkte = arr(kp.schmerzen).map(function (w) { return w && w.satz; }).filter(Boolean);
+        var lf8Punkte = arr(analyse.life_force_8 && analyse.life_force_8.kern).length ? arr(analyse.life_force_8.kern) : arr(analyse.life_force_8 && analyse.life_force_8.punkte);
+        lf8Punkte.slice(0, 4).map(function (t) { return truncateWords(t, 4); }).filter(Boolean).forEach(function (w) {
+          if (!chipExists(w)) werte.push(w);
+        });
+        rerenderChips();
+        if (!form.elements.ziele.value.trim() && wunschPunkte.length) form.elements.ziele.value = wunschPunkte.slice(0, 3).join('. ');
+        if (!form.elements.sorge.value.trim() && schmerzPunkte[0]) form.elements.sorge.value = schmerzPunkte[0];
+        uebBtn.hidden = true;
+        debouncedSave();
+      });
+    }
+  }
+
+  function renderAvatarRoute(r) {
+    var app = $('app');
+    app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
+    Promise.all([
+      DB.get('me_projects?select=*&id=eq.' + r.projectId),
+      DB.get('me_avatare?select=*&id=eq.' + r.avatarId)
+    ]).then(function (res) {
+      var p = res[0] && res[0][0];
+      var a = res[1] && res[1][0];
+      if (!p || !a) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Avatar nicht gefunden.</div></div>'; return; }
+      STATE.project = p; STATE.avatar = a;
+      return loadFirmaForProject(p).then(function () {
+        renderCrumbs(r);
+        var profil = avRowProfil(a);
+        var werte = arr(profil.werte);
+        var html = '<div class="dlm-wrap">' +
+          '<div class="dlm-head-row"><h1 class="dlm-title">' + esc(a.name || 'Avatar') + '</h1>' +
+          '<a class="dlp-btn dlp-ghost" href="#/z/' + esc(p.id) + '?tab=avatare">Zur Avatar-Liste</a></div>' +
+          '<div class="dlm-avatar-tab-grid">' + renderAvatarBildSpalte(a) + '<div class="dlm-avatar-profilspalte">';
+        if (!werte.length && (p.kurzprofil || p.analyse)) {
+          html += '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-ghost" id="dlm-avatar-uebernehmen">' + esc(T.avatarUebernehmen) + '</button></div>';
+        }
+        html += '<form id="dlm-avatar-form" class="dlm-form dlm-avatar-form">' +
+          '<label class="dlm-field"><span>' + esc(T.avatarLabelName) + '</span><input type="text" name="name" value="' + esc(a.name || '') + '" maxlength="120"></label>' +
+          '<label class="dlm-field"><span>' + esc(T.avatarLabelAlter) + '</span><input type="number" name="alter" min="0" max="120" value="' + esc(profil.alter || '') + '"></label>' +
+          '<label class="dlm-field"><span>' + esc(T.avatarLabelBeruf) + '</span><input type="text" name="beruf" value="' + esc(profil.beruf || '') + '" maxlength="160"></label>' +
+          '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelKurz) + '</span><textarea name="kurzbeschreibung" rows="3" maxlength="600">' + esc(profil.kurzbeschreibung || '') + '</textarea></label>' +
+          '<div class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelWerte) + '</span>' +
+          '<div class="dlm-chip-input"><div class="dlm-chips" id="dlm-avatar-werte-chips">' + werteChipsHtml(werte) + '</div>' +
+          '<input type="text" id="dlm-avatar-werte-input" placeholder="' + esc(T.avatarWertePh) + '" maxlength="40"></div>' +
+          '<div class="dlm-chips dlm-chips-vorschlaege">' + AVATAR_WERTE_VORSCHLAEGE.map(function (w) {
+            return '<button type="button" class="dlm-chip dlm-filter-chip" data-werte-vorschlag="' + esc(w) + '">' + esc(w) + '</button>';
+          }).join('') + '</div></div>' +
+          '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelZiele) + '</span><textarea name="ziele" rows="3" maxlength="1000" placeholder="' + esc(T.avatarZielePh) + '">' + esc(profil.ziele || '') + '</textarea></label>' +
+          '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelSorge) + '</span><textarea name="sorge" rows="3" maxlength="1000">' + esc(profil.sorge || '') + '</textarea></label>' +
+          '<label class="dlm-field dlm-field-wide"><span>' + esc(T.avatarLabelAussehen) + '</span><textarea name="aussehen" rows="3" maxlength="1000" placeholder="' + esc(T.avatarAussehenPh) + '">' + esc(profil.aussehen || '') + '</textarea></label>' +
+          '<label class="dlm-field"><span>' + esc(T.avatarLabelMotto) + '</span><input type="text" name="motto" value="' + esc(profil.motto || '') + '" maxlength="200"></label>' +
+          '<p class="dlm-save-hint dlm-field-wide" id="dlm-avatar-savehint">&nbsp;</p></form></div></div>';
+        html += renderAvatarVisitenkarte(a);
+        html += '</div>';
+        app.innerHTML = html;
+        wireAvatarForm($('app'), a, p);
+      });
+    }).catch(function () {
+      app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
+    });
+  }
+
+  function generateAvatarBild(avatarId, stil) {
+    STATE.running['avatarbild-' + avatarId + '-' + stil] = { pending: true };
+    renderAvatarRoute(parseHash());
+    IMG.stream({ uid: STATE.profile.uid, task: 'avatar', avatar_id: avatarId, stil: stil }, { onDelta: function () {} })
+      .then(function () {
+        delete STATE.running['avatarbild-' + avatarId + '-' + stil];
+        renderAvatarRoute(parseHash());
+      }).catch(function (err) {
+        delete STATE.running['avatarbild-' + avatarId + '-' + stil];
+        toast(err && err.message ? err.message : T.genericError);
+        renderAvatarRoute(parseHash());
+      });
+  }
+  function generateAllAvatarBilder(avatarId) {
+    AVATAR_STILE.forEach(function (s) { generateAvatarBild(avatarId, s[0]); });
+  }
+  function chooseAvatarBild(avatarId, stil) {
+    DB.get('me_avatare?select=id,bilder&id=eq.' + avatarId).then(function (rows) {
+      var fresh = rows && rows[0];
+      if (!fresh) return;
+      return DB.patch('me_avatare?id=eq.' + avatarId, { gewaehlt: stil }).then(function () {
+        if (STATE.avatar && STATE.avatar.id === avatarId) STATE.avatar.gewaehlt = stil;
+        renderAvatarRoute(parseHash());
+      });
+    }).catch(function () { toast(T.genericError); });
+  }
+
+  /* ------------------------------------------------------------------
+     19) Ansicht: Content (SPEC §12.2)
+     ------------------------------------------------------------------ */
+  function zielLabel(z) { var f = ZIELE.filter(function (x) { return x[0] === z; })[0]; return f ? f[1] : z; }
+
+  function renderContentView() {
+    var app = $('app');
+    app.innerHTML = '<div class="dlm-wrap"><h1 class="dlm-title">' + esc(T.contentTitle) + '</h1>' +
+      '<div id="dlm-content-auswahl" class="dlm-content-auswahl"><div class="dlm-loading">Lädt...</div></div>' +
+      '<div id="dlm-content-body"></div></div>';
+    DB.get('me_firmen?select=*&archiviert=eq.false&order=name.asc').then(function (firmen) {
+      STATE.firmen = firmen || [];
+      renderContentAuswahl();
+    }).catch(function () {
+      var el = $('dlm-content-auswahl');
+      if (el) el.innerHTML = '<div class="dlm-empty">' + esc(T.genericError) + '</div>';
+    });
+  }
+
+  function renderContentAuswahl() {
+    var el = $('dlm-content-auswahl');
+    if (!el) return;
+    var sel = STATE.contentSel;
+    if (sel.firmaId && !arr(STATE.firmen).some(function (f) { return f.id === sel.firmaId; })) sel.firmaId = null;
+    var firma = arr(STATE.firmen).filter(function (f) { return f.id === sel.firmaId; })[0];
+
+    var html = '<div class="dlm-content-select-row">';
+    html += '<label class="dlm-field"><span>' + esc(T.contentFirma) + '</span><select id="dlm-content-firma"><option value="">Bitte wählen</option>' +
+      arr(STATE.firmen).map(function (f) { return '<option value="' + esc(f.id) + '"' + (f.id === sel.firmaId ? ' selected' : '') + '>' + esc(f.name) + '</option>'; }).join('') +
+      '</select></label>';
+    html += '<label class="dlm-field"><span>' + esc(T.contentZielgruppe) + '</span><select id="dlm-content-zielgruppe" ' + (firma ? '' : 'disabled') + '><option value="">Bitte wählen</option></select></label>';
+    html += '<label class="dlm-field"><span>' + esc(T.contentAvatar) + '</span><select id="dlm-content-avatar" disabled><option value="">' + esc(T.contentAvatarOhne) + '</option></select></label>';
+    html += '</div><div id="dlm-content-preview" class="dlm-content-preview"></div>';
+    el.innerHTML = html;
+
+    var firmaSel = $('dlm-content-firma'), zgSel = $('dlm-content-zielgruppe'), avSel = $('dlm-content-avatar');
+
+    function loadZielgruppen(firmaId, preselect) {
+      zgSel.disabled = true; zgSel.innerHTML = '<option value="">Lädt...</option>';
+      DB.get('me_projects?select=*&archiviert=eq.false&analyse_status=eq.fertig&firma_id=eq.' + firmaId + '&order=updated_at.desc').then(function (rows) {
+        STATE.projects = rows || [];
+        zgSel.disabled = false;
+        if (!STATE.projects.length) {
+          zgSel.innerHTML = '<option value="">' + esc(T.contentKeineZielgruppeFertig) + '</option>';
+          avSel.innerHTML = '<option value="">' + esc(T.contentAvatarOhne) + '</option>'; avSel.disabled = true;
+          renderContentPreview(); renderContentCampaigns();
+          return;
+        }
+        zgSel.innerHTML = '<option value="">Bitte wählen</option>' + STATE.projects.map(function (p) {
+          return '<option value="' + esc(p.id) + '"' + (p.id === preselect ? ' selected' : '') + '>' + esc(zielgruppeName(p)) + '</option>';
+        }).join('');
+        if (preselect && STATE.projects.some(function (p) { return p.id === preselect; })) loadAvatare(preselect, sel.avatarId);
+        else { sel.projectId = null; sel.avatarId = null; avSel.innerHTML = '<option value="">' + esc(T.contentAvatarOhne) + '</option>'; avSel.disabled = true; }
+        renderContentPreview(); renderContentCampaigns();
+      }).catch(function () { zgSel.innerHTML = '<option value="">' + esc(T.genericError) + '</option>'; });
+    }
+    function loadAvatare(projectId, preselect) {
+      avSel.disabled = true; avSel.innerHTML = '<option value="">Lädt...</option>';
+      DB.get('me_avatare?select=*&project_id=eq.' + projectId + '&order=created_at.desc').then(function (rows) {
+        STATE.avatare = rows || [];
+        avSel.disabled = false;
+        avSel.innerHTML = '<option value="">' + esc(T.contentAvatarOhne) + '</option>' + STATE.avatare.map(function (a) {
+          return '<option value="' + esc(a.id) + '"' + (a.id === preselect ? ' selected' : '') + '>' + esc(a.name || 'Avatar') + '</option>';
+        }).join('');
+        renderContentPreview(); renderContentCampaigns();
+      }).catch(function () { avSel.innerHTML = '<option value="">' + esc(T.genericError) + '</option>'; });
+    }
+
+    if (firma) loadZielgruppen(firma.id, sel.projectId);
+
+    firmaSel.addEventListener('change', function () {
+      sel.firmaId = firmaSel.value || null;
+      sel.projectId = null; sel.avatarId = null;
+      saveContentSel();
+      if (!sel.firmaId) {
+        zgSel.disabled = true; zgSel.innerHTML = '<option value="">Bitte wählen</option>';
+        avSel.disabled = true; avSel.innerHTML = '<option value="">' + esc(T.contentAvatarOhne) + '</option>';
+        renderContentPreview(); renderContentCampaigns();
+        return;
+      }
+      loadZielgruppen(sel.firmaId, null);
+    });
+    zgSel.addEventListener('change', function () {
+      sel.projectId = zgSel.value || null;
+      sel.avatarId = null;
+      saveContentSel();
+      if (!sel.projectId) { avSel.disabled = true; avSel.innerHTML = '<option value="">' + esc(T.contentAvatarOhne) + '</option>'; renderContentPreview(); renderContentCampaigns(); return; }
+      loadAvatare(sel.projectId, null);
+    });
+    avSel.addEventListener('change', function () {
+      sel.avatarId = avSel.value || null;
+      saveContentSel();
+      renderContentPreview();
+      renderContentCampaigns();
+    });
+  }
+
+  function renderContentPreview() {
+    var el = $('dlm-content-preview');
+    if (!el) return;
+    var sel = STATE.contentSel;
+    var firma = arr(STATE.firmen).filter(function (f) { return f.id === sel.firmaId; })[0];
+    var project = arr(STATE.projects).filter(function (p) { return p.id === sel.projectId; })[0];
+    var avatar = arr(STATE.avatare).filter(function (a) { return a.id === sel.avatarId; })[0];
+    var html = '';
+    if (firma) html += '<div class="dlm-preview-card"><strong>' + esc(firma.name) + '</strong></div>';
+    if (project) html += '<div class="dlm-preview-card"><strong>' + esc(zielgruppeName(project)) + '</strong>' +
+      (project.kurzprofil && project.kurzprofil.ein_satz ? '<p class="dlm-muted dlm-small">' + esc(project.kurzprofil.ein_satz) + '</p>' : '') + '</div>';
+    if (avatar) html += '<div class="dlm-preview-card dlm-preview-avatar">' + avRowPicHtml(avatar, 36) + '<strong>' + esc(avatar.name || '') + '</strong></div>';
+    el.innerHTML = html;
+  }
+
+  function renderContentCampaigns() {
+    var body = $('dlm-content-body');
+    if (!body) return;
+    var sel = STATE.contentSel;
+    if (!sel.firmaId) { body.innerHTML = '<div class="dlm-empty-block"><p>' + esc(T.contentWaehleFirma) + '</p></div>'; return; }
+    if (!sel.projectId) { body.innerHTML = '<div class="dlm-empty-block"><p>' + esc(T.contentWaehleZielgruppe) + '</p></div>'; return; }
+    body.innerHTML = '<div class="dlm-toolbar"><button type="button" class="dlp-btn dlp-primary" data-action="new-campaign">' + esc(T.kampagneNew) + '</button></div>' +
       '<div id="dlm-campaigns-list" class="dlm-grid"><div class="dlm-loading">Lädt...</div></div>';
-    DB.get('me_campaigns?select=*&project_id=eq.' + p.id + '&order=created_at.desc').then(function (rows) {
+    var path = 'me_campaigns?select=*&project_id=eq.' + sel.projectId + (sel.avatarId ? ('&avatar_id=eq.' + sel.avatarId) : '') + '&order=created_at.desc';
+    DB.get(path).then(function (rows) {
       STATE.campaigns = rows || [];
       var list = $('dlm-campaigns-list');
       if (!list) return;
       if (!STATE.campaigns.length) {
         list.innerHTML = '<div class="dlm-empty-block"><h3>' + esc(T.kampagnenEmptyTitle) + '</h3><p>' + esc(T.kampagnenEmpty) + '</p>' +
-          '<button type="button" class="dlp-btn dlp-primary" data-action="new-campaign" data-id="' + esc(p.id) + '">' + esc(T.kampagneNew) + '</button></div>';
+          '<button type="button" class="dlp-btn dlp-primary" data-action="new-campaign">' + esc(T.kampagneNew) + '</button></div>';
         return;
       }
       list.innerHTML = STATE.campaigns.map(function (c) {
@@ -1900,16 +2482,16 @@
           '<div class="dlm-asset-icons" data-camp-assets="' + esc(c.id) + '"></div>' +
           '</div>';
       }).join('');
-      qsa('[data-open-campaign]', list).forEach(function (el) {
-        el.addEventListener('click', function () { location.hash = '#/p/' + p.id + '/k/' + el.getAttribute('data-open-campaign'); });
+      qsa('[data-open-campaign]', list).forEach(function (elc) {
+        elc.addEventListener('click', function () { location.hash = '#/content/k/' + elc.getAttribute('data-open-campaign'); });
       });
       STATE.campaigns.forEach(function (c) {
         DB.get('me_assets?select=typ,status&campaign_id=eq.' + c.id).then(function (assetRows) {
-          var el = qs('[data-camp-assets="' + c.id + '"]', list);
-          if (!el) return;
+          var elc = qs('[data-camp-assets="' + c.id + '"]', list);
+          if (!elc) return;
           var counts = {};
           arr(assetRows).forEach(function (a) { counts[a.typ] = (counts[a.typ] || 0) + 1; });
-          el.innerHTML = ASSET_TYPES.map(function (t) {
+          elc.innerHTML = ASSET_TYPES.map(function (t) {
             var n = counts[t.typ] || 0;
             return '<span class="dlm-asset-icon' + (n ? ' dlm-asset-icon-on' : '') + '" title="' + esc(t.label) + '">' + n + '</span>';
           }).join('');
@@ -1917,11 +2499,13 @@
       });
     });
   }
-  function zielLabel(z) { var f = ZIELE.filter(function (x) { return x[0] === z; })[0]; return f ? f[1] : z; }
 
-  function openNewCampaignDialog(projectId) {
-    var p = STATE.project;
+  function openNewCampaignDialog() {
+    var sel = STATE.contentSel;
+    var p = arr(STATE.projects).filter(function (x) { return x.id === sel.projectId; })[0];
+    if (!p) { toast(T.contentWaehleZielgruppe); return; }
     var auswahl = p.winkel_auswahl || [];
+    if (auswahl.length < 5) { toast(T.needFiveWinkel); return; }
     var winkelMap = {};
     arr(p.winkel).forEach(function (w) { winkelMap[w.id] = w; });
     var body = document.createElement('div');
@@ -1929,6 +2513,8 @@
       '<label class="dlm-field"><span>' + esc(T.kampagneName) + '</span><input type="text" id="dlm-camp-name" maxlength="120"></label>' +
       '<label class="dlm-field"><span>' + esc(T.kampagneZiel) + '</span><select id="dlm-camp-ziel">' +
       ZIELE.map(function (z) { return '<option value="' + esc(z[0]) + '">' + esc(z[1]) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="dlm-field"><span>' + esc(T.kampagneAvatar) + '</span><select id="dlm-camp-avatar"><option value="">' + esc(T.contentAvatarOhne) + '</option>' +
+      arr(STATE.avatare).map(function (a) { return '<option value="' + esc(a.id) + '"' + (a.id === sel.avatarId ? ' selected' : '') + '>' + esc(a.name || 'Avatar') + '</option>'; }).join('') + '</select></label>' +
       '<fieldset class="dlm-field"><legend>' + esc(T.kampagneWinkel) + '</legend>' +
       auswahl.map(function (wid) {
         var w = winkelMap[wid];
@@ -1949,6 +2535,7 @@
           label: T.create, primary: true, onClick: function (wrap) {
             var name = qs('#dlm-camp-name', wrap).value.trim();
             var ziel = qs('#dlm-camp-ziel', wrap).value;
+            var avatarId = qs('#dlm-camp-avatar', wrap).value || null;
             var winkelIds = qsa('input[type=checkbox]:checked', wrap).map(function (c) { return c.value; });
             if (!name) { toast('Bitte einen Namen eingeben.'); return false; }
             if (!winkelIds.length) { toast('Bitte mindestens einen Winkel wählen.'); return false; }
@@ -1960,9 +2547,9 @@
               preis: qs('#dlm-camp-preis', wrap).value,
               notizen: qs('#dlm-camp-notizen', wrap).value
             };
-            DB.post('me_campaigns', { project_id: projectId, name: name, ziel: ziel, winkel_ids: winkelIds, angebot: angebot }, 'return=representation').then(function (rows) {
+            DB.post('me_campaigns', { project_id: p.id, avatar_id: avatarId, name: name, ziel: ziel, winkel_ids: winkelIds, angebot: angebot }, 'return=representation').then(function (rows) {
               var c = rows && rows[0];
-              if (c) location.hash = '#/p/' + projectId + '/k/' + c.id;
+              if (c) location.hash = '#/content/k/' + c.id;
             });
           }
         }
@@ -1971,34 +2558,40 @@
   }
 
   /* ------------------------------------------------------------------
-     14) Ansicht: Kampagne
+     20) Ansicht: Kampagne (#/content/k/<kid>)
      ------------------------------------------------------------------ */
+  function winkelById(p, id) {
+    return arr(p.winkel).filter(function (w) { return w.id === id; })[0];
+  }
+
   function renderCampaignRoute(r) {
     var app = $('app');
     app.innerHTML = '<div class="dlm-wrap"><div class="dlm-loading">Lädt...</div></div>';
-    Promise.all([
-      DB.get('me_projects?select=*&id=eq.' + r.projectId),
-      DB.get('me_campaigns?select=*&id=eq.' + r.campaignId),
-      DB.get('me_assets?select=*&campaign_id=eq.' + r.campaignId + '&order=created_at.desc')
-    ]).then(function (res) {
-      var p = res[0] && res[0][0];
-      var c = res[1] && res[1][0];
-      var assets = res[2] || [];
-      if (!p || !c) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Kampagne nicht gefunden.</div></div>'; return; }
-      STATE.project = p; STATE.campaign = c; STATE.assets = assets;
-      resumeRunningJobs(p.id, c.id, function () { renderCampaignRoute(parseHash()); });
-      renderCrumbs(r);
-      renderCampaignBody(r, p, c, assets);
+    DB.get('me_campaigns?select=*&id=eq.' + r.campaignId).then(function (rows) {
+      var c = rows && rows[0];
+      if (!c) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Kampagne nicht gefunden.</div></div>'; return; }
+      return Promise.all([
+        DB.get('me_projects?select=*&id=eq.' + c.project_id),
+        DB.get('me_assets?select=*&campaign_id=eq.' + r.campaignId + '&order=created_at.desc'),
+        c.avatar_id ? DB.get('me_avatare?select=*&id=eq.' + c.avatar_id) : Promise.resolve([])
+      ]).then(function (res) {
+        var p = res[0] && res[0][0];
+        var assets = res[1] || [];
+        var avatar = res[2] && res[2][0];
+        if (!p) { app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">Zielgruppe nicht gefunden.</div></div>'; return; }
+        STATE.project = p; STATE.campaign = c; STATE.assets = assets; STATE.campaignAvatar = avatar || null;
+        return loadFirmaForProject(p).then(function () {
+          resumeRunningJobs(p.id, c.id, function () { renderCampaignRoute(parseHash()); });
+          renderCrumbs(r);
+          renderCampaignBody(r, p, c, assets, avatar);
+        });
+      });
     }).catch(function () {
       app.innerHTML = '<div class="dlm-wrap"><div class="dlm-empty">' + esc(T.genericError) + '</div></div>';
     });
   }
 
-  function winkelById(p, id) {
-    return arr(p.winkel).filter(function (w) { return w.id === id; })[0];
-  }
-
-  function renderCampaignBody(r, p, c, assets) {
+  function renderCampaignBody(r, p, c, assets, avatar) {
     var app = $('app');
     var winkelChips = arr(c.winkel_ids).map(function (wid) {
       var w = winkelById(p, wid);
@@ -2008,8 +2601,15 @@
     var counts = {};
     assets.forEach(function (a) { counts[a.typ] = (counts[a.typ] || 0) + 1; });
 
+    var headChips = '<div class="dlm-chips dlm-campaign-head-chips">' +
+      '<span class="dlm-chip">' + esc(STATE.firma ? STATE.firma.name : '') + '</span>' +
+      '<span class="dlm-chip">' + esc(zielgruppeName(p)) + '</span>' +
+      (avatar ? '<span class="dlm-chip">' + esc(avatar.name || 'Avatar') + '</span>' : '') +
+      '</div>';
+
     var html = '<div class="dlm-wrap">' +
       '<div class="dlm-head-row"><div><h1 class="dlm-title">' + esc(c.name) + '</h1>' +
+      headChips +
       '<p class="dlm-muted">Ziel: ' + esc(zielLabel(c.ziel)) + '</p>' +
       '<div class="dlm-chips">' + winkelChips + '</div></div>' +
       '<button type="button" class="dlp-btn dlp-ghost" data-action="check-consistency" data-id="' + esc(c.id) + '">' + esc(T.consistencyCheck) + '</button>' +
@@ -2090,9 +2690,6 @@
     if (s === 'fehler_abgebrochen') return 'dlm-chip-danger';
     return s === 'fertig' ? 'dlm-chip-ok' : (s === 'fehler' ? 'dlm-chip-danger' : (s === 'laeuft' ? 'dlm-chip-warn' : ''));
   }
-  // Ein Asset, das seit ueber 20 Minuten "laeuft" zeigt, aber keinen erkannten laufenden
-  // Job (mehr) hat, gilt als abgebrochen (z. B. Netlify-Neustart). Nur Anzeige, keine
-  // Datenbank-Aenderung noetig, ein neuer Erzeugen-Lauf ueberschreibt es ohnehin.
   var ASSET_STALE_MS = 20 * 60 * 1000;
   function effectiveAssetStatus(a, campaignId) {
     if (a.status !== 'laeuft') return a.status;
@@ -2234,7 +2831,7 @@
   }
 
   /* ------------------------------------------------------------------
-     15) Asset-Panel: Rendering je Typ
+     21) Asset-Panel: Rendering je Typ (unveraendert gegenueber 1.2)
      ------------------------------------------------------------------ */
   function renderAssetPanel(p, c, asset) {
     var vorlageChip = asset.template_id
@@ -2277,13 +2874,6 @@
 
   function copyBtn(text) {
     return '<button type="button" class="dlm-text-btn dlm-copy-btn" data-copy="' + encodeURIComponent(text || '') + '">Kopieren</button>';
-  }
-
-  /* Schema-Angleichung (Befund 3): hashtags koennen Array ODER String sein. */
-  function arr(v) { if (Array.isArray(v)) return v; if (v === null || v === undefined || v === '') return []; return [v]; }
-  function hashtagsArr(h) {
-    if (Array.isArray(h)) return h;
-    return String(h || '').split(/\s+/).filter(Boolean);
   }
 
   function renderCreative(asset) {
@@ -2409,7 +2999,7 @@
       copyBtn(struktur.map(function (s) { return s.sprechtext; }).filter(Boolean).join('\n\n'));
   }
 
-  /* --- Freebie-Designer (SPEC §11.7) ----------------------------------- */
+  /* --- Freebie-Designer (SPEC §11.7, unveraendert) ---------------------- */
   function freebieCurrentDesign(asset) {
     var stored = STATE.freebieDesign[asset.id];
     if (stored) return stored;
@@ -2426,7 +3016,7 @@
     return FREEBIE.build(asset.content || {}, {
       theme: design.theme,
       akzent: design.akzent,
-      firma: (p && p.brief && p.brief.firma) || '',
+      firma: STATE.firma ? STATE.firma.name : '',
       link: (c && c.angebot && c.angebot.link) || ''
     });
   }
@@ -2468,8 +3058,6 @@
       '</div>';
     return html;
   }
-  /* Setzt die iframe-Vorschau (srcdoc per JS, nicht als Attribut im HTML-String,
-     wegen Anfuehrungszeichen/Groesse) und verdrahtet Theme-Kacheln + Farbfeld. */
   function wireFreebieDesigner(asset, p, c) {
     var frame = $('dlm-freebie-frame-' + asset.id);
     if (!frame) return;
@@ -2523,8 +3111,6 @@
     setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 400);
   }
 
-  /* Nachfass ist ein Array von Objekten {zeitpunkt, kanal, ziel, text},
-     toleriert aber auch einfache Strings (Befund 3). */
   function renderNachfass(list) {
     if (!Array.isArray(list) || !list.length) return '';
     var rows = list.map(function (n) {
@@ -2565,58 +3151,25 @@
   function assetAllText(asset) {
     try { return JSON.stringify(asset.content, null, 2); } catch (e) { return ''; }
   }
-
   function assetToMarkdown(asset) {
     var lines = ['# ' + (asset.titel || assetLabel(asset.typ)), ''];
     lines.push(assetAllText(asset));
     return lines.join('\n');
   }
 
-  /* --- Bild-Erzeugung -------------------------------------------------- */
+  /* --- Bild-Erzeugung (Asset-Creatives) -------------------------------- */
   function generateImage(assetId, variant, format) {
     var slot = qs('[data-img-slot="' + assetId + ':' + variant + ':' + format + '"]');
     if (slot) slot.innerHTML = '<span>' + esc(T.imgLoading) + '</span>';
     IMG.stream({ uid: STATE.profile.uid, asset_id: assetId, variante: Number(variant), format: format }, {
       onDelta: function () {}
-    }).then(function (result) {
+    }).then(function () {
       renderCampaignRoute(parseHash());
     }).catch(function (err) {
       toast(err && err.message ? err.message : T.genericError);
       renderCampaignRoute(parseHash());
     });
   }
-
-  /* --- Avatar-Bilder (SPEC §11.3) -------------------------------------- */
-  function generateAvatarBild(projectId, stil) {
-    STATE.running['avatar-' + projectId + '-' + stil] = { pending: true };
-    renderProjectRoute(parseHash());
-    IMG.stream({ uid: STATE.profile.uid, task: 'avatar', project_id: projectId, stil: stil }, { onDelta: function () {} })
-      .then(function () {
-        delete STATE.running['avatar-' + projectId + '-' + stil];
-        renderProjectRoute(parseHash());
-      }).catch(function (err) {
-        delete STATE.running['avatar-' + projectId + '-' + stil];
-        toast(err && err.message ? err.message : T.genericError);
-        renderProjectRoute(parseHash());
-      });
-  }
-  function generateAllAvatarBilder(projectId) {
-    AVATAR_STILE.forEach(function (s) { generateAvatarBild(projectId, s[0]); });
-  }
-  /* Setzt ein Bild als gewaehlt: Avatar-Objekt vorher frisch laden, dann komplett
-     zurueckschreiben (SPEC §11.3). */
-  function chooseAvatarBild(projectId, stil) {
-    DB.get('me_projects?select=id,avatar&id=eq.' + projectId).then(function (rows) {
-      var fresh = rows && rows[0];
-      if (!fresh) return;
-      var avatar = Object.assign({}, avatarOf(fresh), { gewaehlt: stil });
-      return DB.patch('me_projects?id=eq.' + projectId, { avatar: avatar }).then(function () {
-        if (STATE.project && STATE.project.id === projectId) STATE.project.avatar = avatar;
-        renderProjectRoute(parseHash());
-      });
-    }).catch(function () { toast(T.genericError); });
-  }
-
   /* ------------------------------------------------------------------
      15b) Ansicht: Creative-Vorlagen (Creative-Decoder, SPEC §10)
      ------------------------------------------------------------------ */
@@ -3005,57 +3558,74 @@
     DB.del('me_templates?id=eq.' + id).then(function () { location.hash = '#/vorlagen'; });
   }
 
+
   /* ------------------------------------------------------------------
-     16) Event-Delegation
+     22) Event-Delegation
      ------------------------------------------------------------------ */
   function wireGlobalEvents() {
     document.body.addEventListener('click', function (e) {
       var t = e.target;
 
-      var newProjectBtn = t.closest('[data-action="new-project"]');
-      if (newProjectBtn) { openNewProjectDialog(); return; }
+      /* --- Firmen ---------------------------------------------------- */
+      if (t.closest('[data-action="new-firma"]')) { openNewFirmaDialog(); return; }
+      if (t.closest('[data-open-firma]')) { location.hash = '#/f/' + t.closest('[data-open-firma]').getAttribute('data-open-firma'); return; }
+      if (t.closest('[data-action="archive-firma"]')) { openFirmaMenu(); return; }
 
-      var menuBtn = t.closest('[data-action="project-menu"]');
-      if (menuBtn) { e.stopPropagation(); openProjectMenu(menuBtn.getAttribute('data-id')); return; }
+      var newZgBtn = t.closest('[data-action="new-zielgruppe"]');
+      if (newZgBtn) { openNewZielgruppeDialog(newZgBtn.getAttribute('data-id')); return; }
+      var zgMenuBtn = t.closest('[data-action="zielgruppe-menu"]');
+      if (zgMenuBtn) { e.stopPropagation(); openZielgruppeMenu(zgMenuBtn.getAttribute('data-id')); return; }
+      var openZg = t.closest('[data-open-zielgruppe]');
+      if (openZg) { location.hash = '#/z/' + openZg.getAttribute('data-open-zielgruppe'); return; }
 
-      var openProject = t.closest('[data-open-project]');
-      if (openProject) { location.hash = '#/p/' + openProject.getAttribute('data-open-project'); return; }
-
-      var runAnalyseBtn = t.closest('[data-action="run-analyse"]');
-      if (runAnalyseBtn) { runAnalyse(runAnalyseBtn.getAttribute('data-id')); return; }
+      /* --- Interview / Kurzprofil / Analyse --------------------------- */
+      var runKpBtn = t.closest('[data-action="run-kurzprofil"]');
+      if (runKpBtn) { runKurzprofil(runKpBtn.getAttribute('data-id')); return; }
 
       var refineBtn = t.closest('[data-action="refine-analyse"]');
       if (refineBtn) {
         var pid = refineBtn.getAttribute('data-id');
-        var body = document.createElement('div');
-        body.innerHTML = '<label class="dlm-field"><span>Was soll sich ändern?</span><textarea id="dlm-refine-text" rows="4"></textarea></label>';
+        var rbody = document.createElement('div');
+        rbody.innerHTML = '<label class="dlm-field"><span>Was soll sich ändern?</span><textarea id="dlm-refine-text" rows="4"></textarea></label>';
         dialog({
-          title: T.zielgruppeRefine, body: body,
+          title: T.zielgruppeRefine, body: rbody,
           actions: [{ label: T.cancel }, {
             label: 'Verfeinern', primary: true, onClick: function (wrap) {
-              runAnalyse(pid, { hinweis: qs('#dlm-refine-text', wrap).value });
+              runAnalyseTask(pid, 'verfeinern', qs('#dlm-refine-text', wrap).value);
             }
           }]
         });
         return;
       }
-
       var redoBtn = t.closest('[data-action="redo-analyse"]');
       if (redoBtn) {
         var pid2 = redoBtn.getAttribute('data-id');
-        confirmDialog(T.zielgruppeRedoConfirm, function () { runAnalyse(pid2); });
+        confirmDialog(T.zielgruppeRedoConfirm, function () { runAnalyseTask(pid2, 'analyse'); });
         return;
       }
+      var retryTeilBtn = t.closest('[data-action="retry-teil"]');
+      if (retryTeilBtn) { runAnalyseTask(STATE.project.id, 'verfeinern'); return; }
 
       var exportBtn = t.closest('[data-action="export-analyse"]');
       if (exportBtn) {
         var p = STATE.project;
-        var lines = ['# Zielgruppenanalyse - ' + p.name, ''];
+        var lines = ['# Zielgruppenanalyse - ' + zielgruppeName(p), ''];
+        if (p.kurzprofil && p.kurzprofil.ein_satz) lines.push('## Kurzprofil', '', p.kurzprofil.ein_satz, '');
         ANALYSE_CATS.forEach(function (c) {
           var cat = (p.analyse || {})[c[0]] || {};
-          lines.push('## ' + (cat.titel || c[1]), '', cat.inhalt || 'Nicht vorhanden', '');
+          lines.push('## ' + (cat.titel || c[1]), '');
+          if (arr(cat.kern).length) { arr(cat.kern).forEach(function (k) { lines.push('- ' + k); }); lines.push(''); }
+          lines.push(cat.inhalt || 'Nicht vorhanden', '');
         });
         download('zielgruppenanalyse-' + p.id + '.md', lines.join('\n'));
+        return;
+      }
+
+      var modusBtn = t.closest('[data-modus]');
+      if (modusBtn) {
+        STATE.analyseModus = modusBtn.getAttribute('data-modus');
+        try { localStorage.setItem('dlm-analyse-modus', STATE.analyseModus); } catch (e2) {}
+        renderZielgruppeTab($('dlm-tab-body'), STATE.project);
         return;
       }
 
@@ -3063,13 +3633,6 @@
       if (runWinkelBtn) { runWinkel(runWinkelBtn.getAttribute('data-id'), false); return; }
       var moreWinkelBtn = t.closest('[data-action="run-winkel-more"]');
       if (moreWinkelBtn) { runWinkel(moreWinkelBtn.getAttribute('data-id'), true, moreWinkelBtn.getAttribute('data-awareness')); return; }
-
-      var goKampagnenBtn = t.closest('[data-action="go-kampagnen"]');
-      if (goKampagnenBtn) {
-        if (goKampagnenBtn.disabled) return;
-        location.hash = '#/p/' + goKampagnenBtn.getAttribute('data-id') + '/kampagnen';
-        return;
-      }
 
       var restartInterviewBtn = t.closest('[data-action="restart-interview"]');
       if (restartInterviewBtn) {
@@ -3079,12 +3642,11 @@
           DB.patch('me_projects?id=eq.' + riId, { interview: interview }).then(function () {
             if (STATE.project && STATE.project.id === riId) STATE.project.interview = interview;
             interviewSetIdx(STATE.project, 1);
-            renderProjectRoute(parseHash());
+            renderZielgruppeRoute(parseHash());
           });
         });
         return;
       }
-
       var jumpInterviewBtn = t.closest('[data-action="jump-interview"]');
       if (jumpInterviewBtn) {
         var jiId = jumpInterviewBtn.getAttribute('data-id');
@@ -3094,24 +3656,31 @@
         DB.patch('me_projects?id=eq.' + jiId, { interview: interview2 }).then(function () {
           STATE.project.interview = interview2;
           interviewSetIdx(STATE.project, interview2.frage);
-          renderProjectRoute(parseHash());
+          renderZielgruppeRoute(parseHash());
         });
         return;
       }
-
       var interviewStartAnalyseBtn = t.closest('[data-action="interview-start-analyse"]');
       if (interviewStartAnalyseBtn) {
+        var startId = interviewStartAnalyseBtn.getAttribute('data-id');
         setTab('zielgruppe');
-        setTimeout(function () { runAnalyse(interviewStartAnalyseBtn.getAttribute('data-id')); }, 30);
+        setTimeout(function () { runKurzprofil(startId); }, 30);
         return;
       }
 
+      /* --- Avatare ----------------------------------------------------- */
+      var newAvatarBtn = t.closest('[data-action="new-avatar"]');
+      if (newAvatarBtn) { openNewAvatarDialog(newAvatarBtn.getAttribute('data-id')); return; }
+      var avatarMenuBtn = t.closest('[data-action="avatar-menu"]');
+      if (avatarMenuBtn) { e.stopPropagation(); openAvatarMenu(avatarMenuBtn.getAttribute('data-id')); return; }
+      var runAvVorschlagBtn = t.closest('[data-action="run-avatar-vorschlag"]');
+      if (runAvVorschlagBtn) { runAvatarVorschlag(runAvVorschlagBtn.getAttribute('data-id')); return; }
       var genAvatarBtn = t.closest('[data-action="gen-avatar-bild"]');
-      if (genAvatarBtn) { generateAvatarBild(STATE.project.id, genAvatarBtn.getAttribute('data-stil')); return; }
+      if (genAvatarBtn) { generateAvatarBild(STATE.avatar.id, genAvatarBtn.getAttribute('data-stil')); return; }
       var genAvatarAllBtn = t.closest('[data-action="gen-avatar-bild-all"]');
-      if (genAvatarAllBtn) { generateAllAvatarBilder(STATE.project.id); return; }
+      if (genAvatarAllBtn) { generateAllAvatarBilder(STATE.avatar.id); return; }
       var chooseAvatarBtn = t.closest('[data-action="choose-avatar-bild"]');
-      if (chooseAvatarBtn) { chooseAvatarBild(STATE.project.id, chooseAvatarBtn.getAttribute('data-stil')); return; }
+      if (chooseAvatarBtn) { chooseAvatarBild(STATE.avatar.id, chooseAvatarBtn.getAttribute('data-stil')); return; }
 
       var toggleDetail = t.closest('[data-action="toggle-winkel-detail"]');
       if (toggleDetail) {
@@ -3121,9 +3690,6 @@
         return;
       }
 
-      var filterChip = t.closest('#dlm-winkel-filters [data-filter]');
-      if (filterChip) { STATE.winkelFilter = filterChip.getAttribute('data-filter'); renderProjectRoute(parseHash()); return; }
-
       var afilterChip = t.closest('#dlm-asset-filters [data-afilter]');
       if (afilterChip) { STATE.assetFilter = afilterChip.getAttribute('data-afilter'); renderCampaignRoute(parseHash()); return; }
 
@@ -3132,30 +3698,31 @@
 
       var editCat = t.closest('[data-action="edit-cat"]');
       if (editCat) {
-        var item = editCat.closest('.dlm-acc-item');
-        item.classList.add('dlm-acc-open');
-        qs('.dlm-acc-view', item).hidden = true;
+        var item = editCat.closest('.dlm-cat-card');
+        qs('.dlm-cat-view', item).hidden = true;
         qs('.dlm-acc-edit', item).hidden = false;
         return;
       }
       var cancelCat = t.closest('[data-action="cancel-cat"]');
       if (cancelCat) {
-        var item2 = cancelCat.closest('.dlm-acc-item');
-        qs('.dlm-acc-view', item2).hidden = false;
+        var item2 = cancelCat.closest('.dlm-cat-card');
+        qs('.dlm-cat-view', item2).hidden = false;
         qs('.dlm-acc-edit', item2).hidden = true;
         return;
       }
       var saveCat = t.closest('[data-action="save-cat"]');
       if (saveCat) {
         var key = saveCat.getAttribute('data-cat');
-        var item3 = saveCat.closest('.dlm-acc-item');
-        var text = qs('.dlm-acc-edit textarea', item3).value;
+        var item3 = saveCat.closest('.dlm-cat-card');
+        var kernText = qs('.dlm-cat-edit-kern', item3).value;
+        var inhaltText = qs('.dlm-cat-edit-inhalt', item3).value;
+        var kernLines = kernText.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
         var p2 = STATE.project;
         var analyse = Object.assign({}, p2.analyse);
-        analyse[key] = Object.assign({}, analyse[key], { inhalt: text });
+        analyse[key] = Object.assign({}, analyse[key], { inhalt: inhaltText, kern: kernLines });
         DB.patch('me_projects?id=eq.' + p2.id, { analyse: analyse }).then(function () {
           p2.analyse = analyse;
-          renderProjectRoute(parseHash());
+          renderZielgruppeRoute(parseHash());
         });
         return;
       }
@@ -3163,15 +3730,12 @@
       if (copyCat) {
         var key2 = copyCat.getAttribute('data-cat');
         var cat = (STATE.project.analyse || {})[key2] || {};
-        copyText(cat.inhalt || '');
+        copyText((arr(cat.kern).length ? arr(cat.kern).join('\n') + '\n\n' : '') + (cat.inhalt || ''));
         return;
       }
 
-      var newCampBtn = t.closest('[data-action="new-campaign"]');
-      if (newCampBtn) { openNewCampaignDialog(newCampBtn.getAttribute('data-id')); return; }
-
-      var openCamp = t.closest('[data-open-campaign]');
-      if (openCamp) { location.hash = '#/p/' + STATE.project.id + '/k/' + openCamp.getAttribute('data-open-campaign'); return; }
+      /* --- Content / Kampagnen ------------------------------------------ */
+      if (t.closest('[data-action="new-campaign"]')) { openNewCampaignDialog(); return; }
 
       var checkCons = t.closest('[data-action="check-consistency"]');
       if (checkCons) { runConsistency(checkCons.getAttribute('data-id')); return; }
@@ -3189,6 +3753,10 @@
           renderCampaignRoute(parseHash());
           return;
         }
+        if (kind === 'kurzprofil') { cancelRunning('kurzprofil-' + STATE.project.id); stopProgressRotation('kurzprofil'); renderZielgruppeRoute(parseHash()); return; }
+        if (kind === 'analyse') { cancelRunning('analyse-' + STATE.project.id); stopProgressRotation('analyse'); renderZielgruppeRoute(parseHash()); return; }
+        if (kind === 'winkel') { cancelRunning('winkel-' + STATE.project.id); stopProgressRotation('winkel'); renderZielgruppeRoute(parseHash()); return; }
+        if (kind === 'avatar_vorschlag') { cancelRunning('avatar_vorschlag-' + STATE.project.id); stopProgressRotation('avatar_vorschlag'); renderZielgruppeRoute(parseHash()); return; }
         return;
       }
 
@@ -3204,7 +3772,6 @@
         confirmDialog(T.confirmDeleteAsset, function () { deleteAsset(aid); });
         return;
       }
-
       var regenAsset = t.closest('[data-action="regenerate-asset"]');
       if (regenAsset) {
         var typ = regenAsset.getAttribute('data-typ');
@@ -3214,7 +3781,6 @@
         setTimeout(function () { openGenerateDialog(typ); }, 200);
         return;
       }
-
       var exportAsset = t.closest('[data-action="export-asset"]');
       if (exportAsset) {
         var asset = arr(STATE.assets).filter(function (a) { return a.id === exportAsset.getAttribute('data-id'); })[0];
@@ -3255,19 +3821,17 @@
         return;
       }
 
+      /* --- Vorlagen (Creative-Decoder, unveraendert) -------------------- */
       var openTemplate = t.closest('[data-open-template]');
       if (openTemplate) { location.hash = '#/vorlagen/' + openTemplate.getAttribute('data-open-template'); return; }
-
       var templateMenuBtn = t.closest('[data-action="template-menu"]');
       if (templateMenuBtn) { e.stopPropagation(); openTemplateMenu(templateMenuBtn.getAttribute('data-id')); return; }
-
       var redoDecodeBtn = t.closest('[data-action="redo-decode"]');
       if (redoDecodeBtn) {
         var rdId = redoDecodeBtn.getAttribute('data-id');
         confirmDialog(T.vorlagenConfirmRedo, function () { startDecode(rdId); });
         return;
       }
-
       var delTemplateBtn = t.closest('[data-action="delete-template"]');
       if (delTemplateBtn) {
         var dtId = delTemplateBtn.getAttribute('data-id');
@@ -3289,7 +3853,7 @@
   }
 
   /* ------------------------------------------------------------------
-     17) Boot
+     23) Boot
      ------------------------------------------------------------------ */
   function boot() {
     var initialMode = 'dark';

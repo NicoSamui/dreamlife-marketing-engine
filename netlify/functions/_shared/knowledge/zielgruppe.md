@@ -1,8 +1,17 @@
 # ZIELGRUPPENANALYSE: Arbeitsanweisung
 
-Ziel: So genau, dass sich jemand aus der Zielgruppe ertappt fühlt. Alle Winkel und Assets bauen darauf auf. Schreibe extrem ausführlich: mindestens 3500 Wörter insgesamt. Jede Kategorie ist ein Objekt mit "titel", "inhalt" (ausführlicher Markdown-Text) und, wo sinnvoll, "punkte" (Array kurzer, konkreter Einzelpunkte). Liefere die 17 Kategorien exakt mit diesen Schlüsseln und in dieser Reihenfolge.
+Ziel: So genau, dass sich jemand aus der Zielgruppe ertappt fühlt. Alle Winkel und Assets bauen darauf auf. Du bekommst nur einen Teil der 17 Kategorien pro Aufruf (die Schlüssel stehen im Schema) und ein bereits erstelltes Kurzprofil. Bleib mit dem Kurzprofil konsistent (gleiche Hauptperson, gleiche Kernaussagen), vertiefe es, wiederhole es nicht.
 
-Vorgehen: Lege still eine Hauptperson fest und halte sie in allen Kategorien konsistent. Bei klar verschiedenen Käufertypen: 2 bis 3 Untergruppen im basisprofil benennen. Schmerz zu Wunsch etwa 3 zu 1.
+## Format je Kategorie (Pflicht, gegen die Textwand)
+Jede Kategorie ist ein Objekt mit:
+- "titel": kurzer deutscher Titel.
+- "kern": 3 bis 5 Stichpunkte, je maximal 20 Wörter, das Wichtigste zuerst. Konkret, mit Zahl, Ort oder Szene. Wer nur "kern" liest, versteht die Kategorie.
+- "inhalt": Markdown mit Zwischenüberschriften (### ...) und kurzen Absätzen (maximal 4 Sätze je Absatz). Nur dort ausführlich, wo Tiefe wirklich etwas bringt: reale_situationen, sprache_zitate, einwaende, zusammenfassung dürfen lang sein, alle anderen Kategorien maximal 180 Wörter im inhalt.
+- "punkte": Array kurzer, konkreter Einzelpunkte (wo sinnvoll).
+- "zahl" (optional): eine Kennzahl der Kategorie als { "wert": "38", "einheit": "Jahre", "label": "typisches Alter" }.
+Keine Wiederholungen zwischen Kategorien. Keine Einleitungssätze wie "In dieser Kategorie...". Keine Allgemeinplätze. Schmerz zu Wunsch etwa 3 zu 1.
+
+Vorgehen: Lege still eine Hauptperson fest (aus dem Kurzprofil) und halte sie in allen Kategorien konsistent. Bei klar verschiedenen Käufertypen: 2 bis 3 Untergruppen im basisprofil benennen.
 
 ## 1. basisprofil
 Ziel: Die Person wird greifbar. Pflicht: Alter, Geschlecht, Beruf und Rolle, Region, Familienstand, Einkommen und Budget (Schätzung), typischer Werktag mit Uhrzeiten, wer ausdrücklich NICHT zur Zielgruppe gehört. Umfang: mind. 250 Wörter. Fehler: Demografie ohne Alltag; "Männer und Frauen zwischen 25 und 65".
@@ -24,6 +33,8 @@ Beispiel: "Am Monatsende auf das Geschäftskonto schauen und wieder rechnen, ob 
 ## 5. hin_zu
 Ziel: Der Wunschzustand (Steigner: HIN ZU), als Film vorstellbar. Pflicht: zusammenhängende Beschreibung eines konkreten Tages in 6 bis 12 Monaten, dann 8 bis 12 Punkte mit messbaren Details (Betrag, Stunden, Wochentag, Ort, wer es bemerkt). Nenne den tieferen Wunsch hinter dem Oberflächenziel (Hormozi: Dream Outcome). Umfang: mind. 300 Wörter. Fehler: "finanzielle Freiheit", "mehr Zeit für die Familie" ohne Bild.
 Beispiel: "Freitag um 14 Uhr den Laptop zuklappen, die Tochter von der Kita abholen und nicht mehr aufs Handy schauen, weil die Termine für nächste Woche schon im Kalender stehen."
+
+Zusätzlich in hin_zu das Feld "paare": 5 bis 8 Objekte { "weg_von": "...", "hin_zu": "..." }, jeweils ein kurzer Satz, gleiche Sache als Ist- und Wunschzustand gegenübergestellt.
 
 ## 6. reale_situationen
 Ziel: Die Momente, in denen Schmerz oder Wunsch am stärksten sind. Daraus entstehen Hooks. Pflicht: 6 bis 8 Szenen, jede mit Ort, Uhrzeit oder Anlass, Auslöser, Gefühl und dem Satz, den die Person sich in dem Moment selbst sagt (wörtlich, Ich-Form). Mische Beruf, Familie, Geld, Social Media, Gespräche mit anderen. Umfang: je Szene 50 bis 90 Wörter. Fehler: Situationen ohne Auslöser; alle Szenen am Schreibtisch.

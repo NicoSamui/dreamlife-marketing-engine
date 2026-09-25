@@ -501,3 +501,64 @@ input.dlm-title#dlm-template-name:hover, input.dlm-title#dlm-template-name:focus
 @media (max-width: 800px) {
   .dlm-avatar-tab-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------------------------------------------------------------------
+   Version 1.3: Firmen, Content-Auswahl, Kurzprofil, Detailanalyse-Karten
+   --------------------------------------------------------------------- */
+.dlm-firma-card { display: flex; flex-direction: column; gap: 4px; }
+.dlm-avatar-row-mini { display: flex; gap: 4px; margin: 6px 0; }
+.dlm-avatar-row-mini .dlm-avatar-pic { border: 2px solid var(--dl-panel); margin-left: -8px; }
+.dlm-avatar-row-mini .dlm-avatar-pic:first-child { margin-left: 0; }
+
+/* Content-Auswahl */
+.dlm-content-auswahl { margin-bottom: 24px; }
+.dlm-content-select-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; max-width: 900px; }
+.dlm-content-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.dlm-preview-card { padding: 10px 14px; border-radius: 10px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); font-size: 13px; }
+.dlm-preview-avatar { display: flex; align-items: center; gap: 8px; }
+.dlm-campaign-head-chips { margin: 6px 0; }
+
+/* Kurzprofil-Uebersicht (SPEC §12.3) */
+.dlm-kurzprofil { display: flex; flex-direction: column; gap: 20px; margin-bottom: 30px; }
+.dlm-steckbrief-card { padding: 18px 20px; border-radius: var(--radius); background: var(--dl-panel); border: 1px solid var(--dl-panel-border); }
+.dlm-steckbrief-row { font-size: 16px; margin-bottom: 8px; }
+.dlm-tri-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.dlm-tri-col h4 { font-family: var(--dl-font-head); font-size: 14.5px; margin: 0 0 8px; }
+.dlm-tri-card { padding: 12px 14px; border-radius: 10px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); margin-bottom: 8px; }
+.dlm-tri-card strong { display: block; margin-bottom: 4px; font-size: 13.5px; }
+.dlm-tri-card p { margin: 0; font-size: 13px; color: var(--dl-muted); }
+.dlm-badge-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.dlm-badge { padding: 8px 14px; border-radius: 20px; background: var(--dl-badge-bg); color: var(--dl-badge-fg); font-weight: 700; font-size: 12.5px; }
+.dlm-zitate-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.dlm-sprechblase { position: relative; max-width: 280px; padding: 12px 16px; border-radius: 14px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); font-style: italic; font-size: 13.5px; }
+.dlm-chips-row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.dlm-ein-satz { font-family: var(--dl-font-head); font-size: clamp(18px, 2.6vw, 24px); font-weight: 700; padding: 18px 20px; border-radius: var(--radius); background: var(--dl-accent-grad); color: var(--dl-on-accent); text-align: center; }
+
+/* Detailanalyse-Umschalter + Karten */
+.dlm-modus-toggle { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--dl-panel2); border: 1px solid var(--dl-panel-border); margin: 10px 0 16px; }
+.dlm-modus-btn { border: 0; background: none; padding: 8px 16px; border-radius: 9px; font: inherit; font-weight: 700; font-size: 12.5px; color: var(--dl-muted); cursor: pointer; }
+.dlm-modus-active { background: var(--dl-accent-grad); color: var(--dl-on-accent); }
+.dlm-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-bottom: 10px; }
+.dlm-cat-card { padding: 16px 18px; border-radius: 12px; background: var(--dl-panel); border: 1px solid var(--dl-panel-border); display: flex; flex-direction: column; gap: 8px; }
+.dlm-cat-head { display: flex; align-items: center; gap: 4px; }
+.dlm-cat-head h4 { margin: 0; font-size: 14.5px; font-family: var(--dl-font-head); }
+.dlm-kern-list { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; }
+.dlm-kern-list li { margin-bottom: 4px; }
+.dlm-md-h4 { font-family: var(--dl-font-head); font-size: 13.5px; margin: 10px 0 4px; }
+.dlm-zahl-tile { display: inline-flex; flex-direction: column; padding: 6px 12px; border-radius: 10px; background: var(--dl-badge-bg); align-self: flex-start; }
+.dlm-zahl-wert { font-weight: 800; font-size: 17px; color: var(--dl-ink); }
+.dlm-zahl-label { font-size: 10.5px; color: var(--dl-muted); }
+.dlm-paare-table { font-size: 12.5px; }
+
+/* Skelett-Platzhalter (Kategorie wird noch erstellt) */
+.dlm-skeleton-card { padding: 16px 18px; border-radius: 12px; background: var(--dl-panel); border: 1px dashed var(--dl-panel-border); display: flex; flex-direction: column; gap: 10px; }
+.dlm-skeleton-line { height: 10px; border-radius: 6px; background: linear-gradient(90deg, var(--dl-bar-track) 25%, var(--dl-badge-bg) 50%, var(--dl-bar-track) 75%); background-size: 200% 100%; animation: dlm-shimmer 1.4s ease-in-out infinite; }
+.dlm-skeleton-w60 { width: 60%; }
+.dlm-skeleton-w75 { width: 75%; }
+.dlm-skeleton-w90 { width: 90%; }
+@keyframes dlm-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.dlm-cat-fehler { padding: 10px; border-radius: 10px; background: rgba(248,113,113,.1); border: 1px solid var(--dl-danger); }
+
+@media (max-width: 700px) {
+  .dlm-content-select-row { grid-template-columns: 1fr; }
+}

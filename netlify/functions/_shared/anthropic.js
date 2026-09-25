@@ -41,6 +41,12 @@ async function streamText(opts) {
     system: opts.system,
     messages: [{ role: "user", content: userContent }],
   };
+  // Optionales Denk-Budget ("low"|"medium"|"high"): manche Modelle/Konten kennen
+  // output_config/effort noch nicht und antworten mit 400 - dann unten einmal
+  // ohne das Feld erneut senden.
+  if (opts.effort === "low" || opts.effort === "medium" || opts.effort === "high") {
+    body.output_config = { effort: opts.effort };
+  }
   if (json) {
     body.tools = [{
       name: "ergebnis",
@@ -53,10 +59,11 @@ async function streamText(opts) {
     body.tool_choice = { type: "auto" };
     body.system = String(opts.system || "") + "\n\nAUSGABE: Rufe IMMER das Tool \"ergebnis\" auf und uebergib das komplette Ergebnis-JSON als dessen Eingabe. Kein Text davor oder danach.";
   }
-  const payload = JSON.stringify(body);
+  let payload = JSON.stringify(body);
 
   let upstream = null;
   let lastMsg = "KI-Fehler.";
+  let effortDropped = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 1200 * attempt));
     let res;
@@ -70,6 +77,16 @@ async function streamText(opts) {
     let m = "";
     try { const j = await res.json(); m = (j && j.error && j.error.message) || ""; } catch (e) {}
     lastMsg = m || ("KI-Fehler (" + res.status + ").");
+    // Manche Modelle/Konten kennen output_config/effort noch nicht: bei 400 mit
+    // entsprechendem Hinweis das Feld einmal entfernen und sofort erneut senden
+    // (kostet keinen der drei regulaeren Versuche).
+    if (res.status === 400 && body.output_config && !effortDropped && /output_config|effort/i.test(m)) {
+      effortDropped = true;
+      delete body.output_config;
+      payload = JSON.stringify(body);
+      attempt--;
+      continue;
+    }
     const grund = classifyProviderError(res.status, m);
     if (grund) {
       // Anbieter-Problem (Guthaben/Schluessel): Nico per WhatsApp informieren, Teilnehmer

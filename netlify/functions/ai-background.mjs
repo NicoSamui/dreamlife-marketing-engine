@@ -8,14 +8,19 @@
 // Wird von ai.mjs (Starter) angestossen: {job_id, hinweis?, winkel_id?, mehr?, anzahl?} im
 // Body, Header x-me-internal = HMAC-SHA256(AI_GUARD_SALT, job_id) (siehe _shared/internal.js).
 // Laedt den Job serverseitig aus me_jobs, uebernimmt ihn atomar (wartet -> laeuft, damit ein
-// Job nie doppelt laeuft), laedt Projekt/Kampagne/Asset/Profil anhand der Job-uid und macht
-// die eigentliche KI-Arbeit:
-//   - analyse/verfeinern: 4 parallele Anthropic-Aufrufe (je eine Teilmenge der 17
-//     Kategorien), Fortschritt ueber me_jobs.teil_fertig und me_jobs.chars.
+// Job nie doppelt laeuft), laedt Projekt/Firma/Kampagne/Avatar/Asset/Profil anhand der
+// Job-uid und macht die eigentliche KI-Arbeit (SPEC §12.3/§12.4/§12.5):
+//   - kurzprofil: EIN Aufruf (Stufe 1), speichert me_projects.kurzprofil, stoesst danach
+//     automatisch Stufe 2 an (neuer me_jobs-Eintrag task "analyse").
+//   - analyse/verfeinern: 6 Teile A bis F, paarweise nacheinander gestartet
+//     ((A,B) dann (C,D) dann (E,F)), jeder fertige Teil wird SOFORT in me_projects.analyse
+//     gemergt und me_projects.analyse_teile[<Buchstabe>] gesetzt, Fortschritt zusaetzlich
+//     ueber me_jobs.teil_fertig und me_jobs.chars.
+//   - avatar_vorschlag: EIN Aufruf, legt bis zu 3 Zeilen in me_avatare an.
 //   - winkel/asset/konsistenz: ein Aufruf (weiterhin Streaming zu Anthropic, damit
 //     me_jobs.chars laufend aktualisiert werden kann), Ergebnis wie bisher speichern.
 // Am Ende steht me_jobs.status auf "fertig" (mit kleinem result-Objekt) oder "fehler"
-// (mit fehler-Text). Die grossen Ergebnisse liegen in me_projects/me_campaigns/me_assets.
+// (mit fehler-Text). Die grossen Ergebnisse liegen in me_projects/me_campaigns/me_assets/me_avatare.
 
 import supa from './_shared/supa.js';
 import textHelpers from './_shared/text.js';
@@ -23,7 +28,6 @@ import prompts from './_shared/prompts.js';
 import { internalToken } from './_shared/internal.js';
 import { streamText } from './_shared/anthropic.js';
 
-const MODEL = process.env.MODEL || 'claude-opus-5-5';
 const CORS = { 'Content-Type': 'application/json' };
 const CHARS_MIN_DELTA = 1500;
 const CHARS_MIN_INTERVAL_MS = 2000;
@@ -61,6 +65,52 @@ function jsonResp(obj, status) {
   return new Response(JSON.stringify(obj), { status, headers: CORS });
 }
 
+// Laedt die Firma einer Zielgruppe (SPEC §12.1/§12.5): me_firmen ueber project.firma_id,
+// uid wird geprueft. Fehlt firma_id oder die Zeile, liefert die Funktion null (kein Fehler,
+// eine Zielgruppe ohne Firma ist gueltig, z. B. Altbestand vor der Migration).
+async function loadFirma(project, uid) {
+  const firmaId = project && cleanId(project.firma_id);
+  if (!firmaId) return null;
+  try {
+    const firma = await supa.getOne('me_firmen', { id: 'eq.' + firmaId });
+    if (!firma || firma.uid !== uid) return null;
+    return firma;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Laedt den fuer eine Kampagne gewaehlten Avatar (SPEC §12.4/§12.5): me_avatare ueber
+// campaign.avatar_id, uid und project_id werden geprueft. Ohne avatar_id oder bei einem
+// fremden/fehlenden Avatar liefert die Funktion null (Kampagnen ohne Avatar sind gueltig).
+async function loadAvatarRow(campaign, uid) {
+  const avatarId = campaign && cleanId(campaign.avatar_id);
+  if (!avatarId) return null;
+  try {
+    const avatar = await supa.getOne('me_avatare', { id: 'eq.' + avatarId });
+    if (!avatar || avatar.uid !== uid || avatar.project_id !== campaign.project_id) return null;
+    return avatar;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Stoesst einen neu angelegten Job bei sich selbst (dieser Function) an, mit demselben
+// internen Token-Schutz wie ai.mjs (SPEC §12.3, Stufe 1 -> Stufe 2). Liefert true bei Erfolg.
+async function kickOffJob(jobId) {
+  const base = process.env.URL || '';
+  try {
+    const res = await fetch(base + '/.netlify/functions/ai-background', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-me-internal': internalToken(jobId) },
+      body: JSON.stringify({ job_id: jobId }),
+    });
+    return !!res && (res.status === 202 || res.ok);
+  } catch (e) {
+    return false;
+  }
+}
+
 // Ermittelt einen kurzen, lesbaren Titel fuer ein Asset aus dem erzeugten Inhalt.
 function extractTitel(typ, parsed) {
   try {
@@ -81,27 +131,34 @@ async function saveResult(task, parsed, ctx) {
   const realTask = task === 'verfeinern' ? 'analyse' : task;
   const nowIso = new Date().toISOString();
 
-  if (realTask === 'analyse') {
-    const patchBody = { analyse: parsed, analyse_status: 'fertig', updated_at: nowIso };
-    // SPEC §11.2: avatar_person aus basisprofil in me_projects.avatar mergen (bestehende
-    // bilder/gewaehlt bleiben erhalten). Fehlt avatar_person, wird avatar gar nicht angefasst.
-    const avatarPerson = parsed && parsed.basisprofil && typeof parsed.basisprofil === 'object'
-      ? parsed.basisprofil.avatar_person : null;
-    if (avatarPerson && typeof avatarPerson === 'object') {
-      const bestehend = (ctx.project && ctx.project.avatar && typeof ctx.project.avatar === 'object') ? ctx.project.avatar : {};
-      const avatar = Object.assign({}, bestehend, {
-        name: avatarPerson.name,
-        alter: avatarPerson.alter,
-        beruf: avatarPerson.beruf,
-        kurzbeschreibung: avatarPerson.kurzbeschreibung,
-        bild_prompt: avatarPerson.bild_prompt,
-      });
-      avatar.bilder = Array.isArray(bestehend.bilder) ? bestehend.bilder : [];
-      avatar.gewaehlt = bestehend.gewaehlt || null;
-      patchBody.avatar = avatar;
-    }
-    await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, patchBody);
+  // Hinweis: "analyse"/"verfeinern" werden NICHT mehr hier gespeichert (SPEC §12.3): die
+  // 6 Teile A bis F speichern sich progressiv selbst (siehe runAnalysePartsProgressive unten),
+  // damit die Oberflaeche sich Kategorie fuer Kategorie fuellt statt am Ende in einem Schritt.
+
+  if (realTask === 'kurzprofil') {
+    await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, {
+      kurzprofil: parsed, kurzprofil_status: 'fertig', updated_at: nowIso,
+    });
     return { ok: true };
+  }
+
+  if (realTask === 'avatar_vorschlag') {
+    const avatare = Array.isArray(parsed.avatare) ? parsed.avatare : [];
+    const rows = avatare.slice(0, 3).map((a) => {
+      const profil = Object.assign({}, a);
+      delete profil.name;
+      return { uid: ctx.uid, project_id: ctx.project.id, name: a.name, profil, bilder: [], gewaehlt: null };
+    });
+    const ids = [];
+    for (const row of rows) {
+      try {
+        const inserted = await supa.insert('me_avatare', row);
+        if (inserted && inserted.id) ids.push(inserted.id);
+      } catch (e) {
+        console.warn('avatar_vorschlag: Zeile konnte nicht angelegt werden', e && e.message);
+      }
+    }
+    return { avatar_ids: ids };
   }
 
   if (realTask === 'winkel') {
@@ -148,6 +205,8 @@ async function saveError(task, ctx, message) {
   try {
     if (realTask === 'analyse' && ctx.project) {
       await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse_status: 'fehler' });
+    } else if (realTask === 'kurzprofil' && ctx.project) {
+      await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { kurzprofil_status: 'fehler' });
     } else if (realTask === 'asset' && ctx.asset) {
       await supa.patch('me_assets', { id: 'eq.' + ctx.asset.id }, { status: 'fehler', fehler: msg });
     } else if (realTask === 'decode' && ctx.template) {
@@ -190,72 +249,120 @@ async function setTeilFertig(jobId, teil) {
   try { await supa.patch('me_jobs', { id: 'eq.' + jobId }, { teil_fertig: teil }); } catch (e) {}
 }
 
-// Fuehrt die 4 parallelen Analyse-Teile aus und liefert das zusammengefuegte Ergebnis.
-async function runAnalyseParts(job, ctx, key, reportChars) {
+// Fuehrt die 6 Analyse-Teile A bis F progressiv aus (SPEC §12.3): paarweise nacheinander
+// gestartet ((A,B), dann (C,D), dann (E,F)), innerhalb eines Paars parallel. Nach JEDEM
+// fertigen Teil wird die Analyse-Zeile frisch geladen, die Kategorien des Teils gemergt,
+// analyse_teile[<Buchstabe>] gesetzt und sofort gespeichert, damit sich die Oberflaeche
+// Kategorie fuer Kategorie fuellt. Ein einzelner Teil-Fehler setzt nur diesen Buchstaben auf
+// "fehler" und blockiert die anderen Teile nicht. Am Ende: analyse_status "fertig", wenn
+// mindestens 12 der 17 Kategorien vorhanden sind (mit einem Nachlauf-Versuch fuer fehlende
+// Kategorien), sonst "fehler". Speichert direkt in me_projects und liefert nur ein kleines
+// Ergebnis-Objekt fuer den Job zurueck (kein Rueckgabewert zum weiteren Speichern noetig).
+async function runAnalysePartsProgressive(job, ctx, key, reportChars) {
   const teile = prompts.KATEGORIE_TEILE;
-  const nummern = Object.keys(teile).map(Number).sort((a, b) => a - b);
+  const paare = prompts.KATEGORIE_PAARE;
+  const buchstaben = paare.reduce((acc, p) => acc.concat(p), []);
   const charsByTeil = {};
-  nummern.forEach((n) => { charsByTeil[n] = 0; });
-  let fertigCount = 0;
+  buchstaben.forEach((b) => { charsByTeil[b] = 0; });
+  let teilFertigCount = 0;
 
   function totalChars() {
-    return nummern.reduce((sum, n) => sum + charsByTeil[n], 0);
+    return buchstaben.reduce((sum, b) => sum + charsByTeil[b], 0);
   }
 
-  const jobs = nummern.map((n) => {
-    const kategorien = teile[n];
-    const promptData = prompts.buildPrompt('analyse', {
-      project: ctx.project, hinweis: ctx.hinweis, profile: ctx.profile, kategorien,
-    });
-    return streamText({
-      key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
-      onDelta: (deltaText) => {
-        charsByTeil[n] += deltaText.length;
-        reportChars(totalChars());
-      },
-    }).then((fullText) => {
-      let parsed = textHelpers.extractJSON(fullText);
-      parsed = textHelpers.deepStripDashes(parsed);
-      fertigCount += 1;
-      setTeilFertig(job.id, fertigCount);
-      return { n, parsed };
-    });
-  });
+  // Serialisiert das Lesen+Mergen+Schreiben je Teil (nicht die KI-Aufrufe selbst): zwei Teile
+  // eines Paars laufen bei Anthropic parallel, aber wenn beide fast gleichzeitig fertig werden,
+  // wuerde ein "frisch laden -> mergen -> schreiben" ohne diese Schlange den jeweils anderen
+  // Teil ueberschreiben (verlorenes Update). Die Kette stellt sicher, dass jeder Teil seinen
+  // Schreibvorgang erst beginnt, wenn der vorherige abgeschlossen ist, dabei aber sofort dran
+  // ist, sobald er an der Reihe ist (kein Warten auf das ganze Paar).
+  let schreibKette = Promise.resolve();
+  function serialisiert(fn) {
+    const lauf = schreibKette.then(fn, fn);
+    schreibKette = lauf.then(() => {}, () => {});
+    return lauf;
+  }
 
-  const results = await Promise.all(jobs);
+  async function persistFertig(letter, kategorien, parsed) {
+    let fresh = null;
+    try { fresh = await supa.getOne('me_projects', { id: 'eq.' + ctx.project.id }); } catch (e) { /* nutze alten Stand */ }
+    const bestehendeAnalyse = (fresh && fresh.analyse && typeof fresh.analyse === 'object') ? fresh.analyse : {};
+    const mergedAnalyse = Object.assign({}, bestehendeAnalyse);
+    kategorien.forEach((k) => { if (parsed && parsed[k]) mergedAnalyse[k] = parsed[k]; });
+    const bestehendeTeile = (fresh && fresh.analyse_teile && typeof fresh.analyse_teile === 'object') ? fresh.analyse_teile : {};
+    const analyseTeile = Object.assign({}, bestehendeTeile, { [letter]: 'fertig' });
+    await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse: mergedAnalyse, analyse_teile: analyseTeile });
+    teilFertigCount += 1;
+    await setTeilFertig(job.id, teilFertigCount);
+  }
+
+  async function persistFehler(letter) {
+    try {
+      let fresh = null;
+      try { fresh = await supa.getOne('me_projects', { id: 'eq.' + ctx.project.id }); } catch (e2) { /* nutze alten Stand */ }
+      const bestehendeTeile = (fresh && fresh.analyse_teile && typeof fresh.analyse_teile === 'object') ? fresh.analyse_teile : {};
+      await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse_teile: Object.assign({}, bestehendeTeile, { [letter]: 'fehler' }) });
+    } catch (e2) { /* nicht abbruchwuerdig */ }
+  }
+
+  async function runOne(letter) {
+    const kategorien = teile[letter];
+    try {
+      const promptData = prompts.buildPrompt('analyse', {
+        project: ctx.project, firma: ctx.firma, hinweis: ctx.hinweis, profile: ctx.profile, kategorien,
+      });
+      const fullText = await streamText({
+        key, model: promptData.model, effort: promptData.effort,
+        system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
+        onDelta: (deltaText) => { charsByTeil[letter] += deltaText.length; reportChars(totalChars()); },
+      });
+      const parsed = textHelpers.deepStripDashes(textHelpers.extractJSON(fullText));
+      await serialisiert(() => persistFertig(letter, kategorien, parsed));
+      return { letter, ok: true };
+    } catch (e) {
+      console.warn('Analyse-Teil fehlgeschlagen', letter, e && e.message);
+      await serialisiert(() => persistFehler(letter));
+      return { letter, ok: false, error: e && e.message };
+    }
+  }
+
+  for (const paar of paare) {
+    await Promise.all(paar.map(runOne));
+  }
   reportChars(totalChars(), true);
 
-  const byTeil = {};
-  results.forEach((r) => { byTeil[r.n] = r.parsed; });
+  // Endstand laden: mindestens 12 der 17 Kategorien muessen vorhanden sein, sonst einmaliger
+  // Nachlauf fuer die fehlenden Kategorien (wie bisher bei der 4-Teile-Version).
+  let finalProject = null;
+  try { finalProject = await supa.getOne('me_projects', { id: 'eq.' + ctx.project.id }); } catch (e) { /* siehe unten */ }
+  let analyse = (finalProject && finalProject.analyse && typeof finalProject.analyse === 'object') ? finalProject.analyse : {};
+  let fehlend = prompts.KATEGORIEN_ALL.filter((k) => !analyse[k]);
 
-  const merged = {};
-  prompts.KATEGORIEN_ALL.forEach((k) => {
-    for (const n of nummern) {
-      const part = byTeil[n];
-      if (part && part[k]) { merged[k] = part[k]; break; }
-    }
-  });
-
-  // Nachlauf: fehlende Kategorien (z. B. durch abgeschnittene Antworten) in EINEM weiteren
-  // Aufruf nachholen. Bleibt danach noch etwas leer, wird die Kategorie als Hinweis gefuellt,
-  // damit die Analyse nie mit Luecken abgespeichert wird, ohne dass der Teilnehmer es sieht.
-  const fehlend = prompts.KATEGORIEN_ALL.filter((k) => !merged[k]);
   if (fehlend.length) {
     try {
-      const pd = prompts.buildPrompt('analyse', { project: ctx.project, hinweis: ctx.hinweis, profile: ctx.profile, kategorien: fehlend });
-      const txt = await streamText({ key, model: MODEL, system: pd.system, user: pd.user, max_tokens: pd.max_tokens, schema: pd.input_schema,
-        onDelta: (d) => { charsByTeil[nummern[0]] += d.length; reportChars(totalChars()); } });
+      const pd = prompts.buildPrompt('analyse', { project: ctx.project, firma: ctx.firma, hinweis: ctx.hinweis, profile: ctx.profile, kategorien: fehlend });
+      const txt = await streamText({
+        key, model: pd.model, effort: pd.effort, system: pd.system, user: pd.user, max_tokens: pd.max_tokens, schema: pd.input_schema,
+        onDelta: (d) => reportChars(totalChars() + d.length),
+      });
       const nach = textHelpers.deepStripDashes(textHelpers.extractJSON(txt));
-      fehlend.forEach((k) => { if (nach && nach[k]) merged[k] = nach[k]; });
+      fehlend.forEach((k) => { if (nach && nach[k]) analyse[k] = nach[k]; });
     } catch (e) {
       console.warn('Analyse-Nachlauf fehlgeschlagen', e && e.message);
     }
-    prompts.KATEGORIEN_ALL.filter((k) => !merged[k]).forEach((k) => {
-      merged[k] = { titel: k, inhalt: 'Diese Kategorie konnte nicht erzeugt werden. Bitte "Verfeinern mit Hinweis" nutzen und diese Kategorie nennen.', punkte: [] };
-    });
+    fehlend = prompts.KATEGORIEN_ALL.filter((k) => !analyse[k]);
   }
-  merged.meta = { erzeugt_am: new Date().toISOString(), modell: MODEL, version: '1.0' };
-  return merged;
+
+  const vorhandenCount = prompts.KATEGORIEN_ALL.length - fehlend.length;
+  const status = vorhandenCount >= 12 ? 'fertig' : 'fehler';
+  if (status === 'fertig' && (!analyse.meta || typeof analyse.meta !== 'object')) {
+    analyse.meta = { erzeugt_am: new Date().toISOString(), modell: prompts.modelFor('analyse'), version: '1.3' };
+  }
+  await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse, analyse_status: status, updated_at: new Date().toISOString() });
+  if (status !== 'fertig') {
+    throw new Error('Die Zielgruppenanalyse konnte nicht vollstaendig erstellt werden (' + vorhandenCount + ' von ' + prompts.KATEGORIEN_ALL.length + ' Kategorien).');
+  }
+  return { ok: true, kategorien: vorhandenCount };
 }
 
 const key = process.env.ANTHROPIC_API_KEY;
@@ -312,6 +419,9 @@ export default async (req) => {
       project = await supa.getOne('me_projects', { id: 'eq.' + job.project_id });
       if (!project || project.uid !== uid) throw new Error('Kein Zugriff auf dieses Projekt.');
       ctx.project = project;
+      // Firma der Zielgruppe (SPEC §12.1/§12.5): eigener Kontext-Block fuer alle Aufgaben.
+      // Fehlt firma_id oder die Zeile, bleibt ctx.firma null (kein Fehler).
+      ctx.firma = await loadFirma(project, uid);
     }
 
     if (job.template_id) {
@@ -324,6 +434,8 @@ export default async (req) => {
       campaign = await supa.getOne('me_campaigns', { id: 'eq.' + job.campaign_id });
       if (!campaign || campaign.uid !== uid || campaign.project_id !== job.project_id) throw new Error('Kein Zugriff auf diese Kampagne.');
       ctx.campaign = campaign;
+      // Gewaehlter Avatar der Kampagne (SPEC §12.4/§12.5), ohne bilder/bild_prompt im Prompt.
+      ctx.avatarRow = await loadAvatarRow(campaign, uid);
     }
 
     let typ = job.typ;
@@ -370,15 +482,56 @@ export default async (req) => {
     let saveCtx = { project, campaign, asset, template, uid, typ, mehr: ctx.mehr };
     let jobResult;
 
-    if (task === 'analyse' || task === 'verfeinern') {
-      const merged = await runAnalyseParts(job, ctx, key, reportChars);
-      await saveResult(task, merged, saveCtx);
-      jobResult = { ok: true };
+    if (task === 'kurzprofil') {
+      const promptData = prompts.buildPrompt('kurzprofil', { project, firma: ctx.firma });
+      const fullText = await streamText({
+        key, model: promptData.model, effort: promptData.effort,
+        system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
+        onDelta: (_delta, total) => reportChars(total),
+      });
+      reportChars(fullText.length, true);
+      const parsed = textHelpers.deepStripDashes(textHelpers.extractJSON(fullText));
+      await saveResult('kurzprofil', parsed, saveCtx);
+
+      // SPEC §12.3: nach dem Kurzprofil startet automatisch Stufe 2 (Detailanalyse, 6 Teile).
+      let analyseJobId = null;
+      try {
+        const analyseJob = await supa.insert('me_jobs', {
+          uid, task: 'analyse', typ: null,
+          project_id: project.id, campaign_id: null, asset_id: null,
+          status: 'wartet', chars: 0, teil_fertig: 0, teile: 6,
+        });
+        analyseJobId = analyseJob && analyseJob.id;
+        if (analyseJobId) {
+          await supa.patch('me_projects', { id: 'eq.' + project.id }, { analyse_status: 'laeuft', analyse_teile: {} });
+          const gestartet = await kickOffJob(analyseJobId);
+          if (!gestartet) {
+            await supa.patch('me_projects', { id: 'eq.' + project.id }, { analyse_status: 'fehler' });
+          }
+        }
+      } catch (e) {
+        console.warn('Stufe 2 (Analyse) konnte nicht automatisch gestartet werden', e && e.message);
+        try { await supa.patch('me_projects', { id: 'eq.' + project.id }, { analyse_status: 'fehler' }); } catch (e2) {}
+      }
+      jobResult = { ok: true, analyse_job_id: analyseJobId };
+    } else if (task === 'avatar_vorschlag') {
+      const promptData = prompts.buildPrompt('avatar_vorschlag', { project, firma: ctx.firma });
+      const fullText = await streamText({
+        key, model: promptData.model, effort: promptData.effort,
+        system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
+        onDelta: (_delta, total) => reportChars(total),
+      });
+      reportChars(fullText.length, true);
+      const parsed = textHelpers.deepStripDashes(textHelpers.extractJSON(fullText));
+      jobResult = await saveResult('avatar_vorschlag', parsed, saveCtx);
+    } else if (task === 'analyse' || task === 'verfeinern') {
+      jobResult = await runAnalysePartsProgressive(job, ctx, key, reportChars);
     } else if (task === 'decode') {
       const image = await fetchReferenceImage(template.bild_url);
       const promptData = prompts.buildPrompt('decode', { template });
       const fullText = await streamText({
-        key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens,
+        key, model: promptData.model, effort: promptData.effort,
+        system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens,
         schema: promptData.input_schema, images: [image],
         onDelta: (_delta, total) => reportChars(total),
       });
@@ -388,12 +541,13 @@ export default async (req) => {
       jobResult = await saveResult('decode', parsed, saveCtx);
     } else {
       const promptData = prompts.buildPrompt(task, {
-        project, campaign, asset, typ, winkel: ctx.winkel, winkel_id: ctx.winkel_id,
+        project, firma: ctx.firma, campaign, asset, typ, winkel: ctx.winkel, winkel_id: ctx.winkel_id, avatarRow: ctx.avatarRow,
         profile, hinweis: ctx.hinweis, mehr: ctx.mehr, anzahl: ctx.anzahl, assets: assetsCtx, template,
         awareness: ctx.awareness,
       });
       const fullText = await streamText({
-        key, model: MODEL, system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
+        key, model: promptData.model, effort: promptData.effort,
+        system: promptData.system, user: promptData.user, max_tokens: promptData.max_tokens, schema: promptData.input_schema,
         onDelta: (_delta, total) => reportChars(total),
       });
       reportChars(fullText.length, true);
@@ -414,4 +568,7 @@ export default async (req) => {
   }
 };
 
-export const _test = { extractTitel, saveResult, saveError, cleanId, makeCharsReporter, runAnalyseParts, fetchReferenceImage };
+export const _test = {
+  extractTitel, saveResult, saveError, cleanId, makeCharsReporter, runAnalysePartsProgressive,
+  fetchReferenceImage, loadFirma, loadAvatarRow, kickOffJob,
+};

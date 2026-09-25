@@ -81,6 +81,23 @@ async function uploadReference(ctx) {
 exports.handler = createGateway({
   app: "marketing-engine",
   tables: {
+    // me_firmen: Firmen-Ebene (SPEC §12.1), oberhalb der Zielgruppen (me_projects).
+    me_firmen: {
+      owner: "uid",
+      methods: ["GET", "POST", "PATCH", "DELETE"],
+      conflictKeys: ["id"],
+      maxRows: 500,
+      maxWrite: 5,
+    },
+    // me_avatare: Avatare je Zielgruppe (SPEC §12.1/12.4), eigene Zeilen statt
+    // eines Einzelfelds im Projekt.
+    me_avatare: {
+      owner: "uid",
+      methods: ["GET", "POST", "PATCH", "DELETE"],
+      conflictKeys: ["id"],
+      maxRows: 1000,
+      maxWrite: 5,
+    },
     me_projects: {
       owner: "uid",
       methods: ["GET", "POST", "PATCH", "DELETE"],

@@ -27,7 +27,12 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-const VALID_TASKS = ['analyse', 'verfeinern', 'winkel', 'asset', 'konsistenz', 'decode'];
+const VALID_TASKS = ['kurzprofil', 'analyse', 'verfeinern', 'avatar_vorschlag', 'winkel', 'asset', 'konsistenz', 'decode'];
+// Anzahl der Job-Teile je Aufgabe (me_jobs.teile, fuer die Fortschrittsanzeige im Browser).
+// analyse/verfeinern laufen in 6 Teilen A bis F (SPEC §12.3), alle anderen in einem Aufruf.
+function teileFor(task) {
+  return (task === 'analyse' || task === 'verfeinern') ? 6 : 1;
+}
 // Awareness-Stufen fuer Task "winkel" mit mehr:true (SPEC §11.5): "mehr" liefert 5 neue
 // Winkel NUR fuer eine gewaehlte Stufe, darum ist "awareness" dann Pflicht.
 const VALID_AWARENESS = ['unbewusst', 'problembewusst', 'loesungsbewusst', 'produktbewusst', 'meistbewusst'];
@@ -55,6 +60,8 @@ async function markJobFehler(jobId, task, ctx, message) {
   try {
     if ((task === 'analyse' || task === 'verfeinern') && ctx.project) {
       await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { analyse_status: 'fehler' });
+    } else if (task === 'kurzprofil' && ctx.project) {
+      await supa.patch('me_projects', { id: 'eq.' + ctx.project.id }, { kurzprofil_status: 'fehler' });
     } else if (task === 'asset' && ctx.asset) {
       await supa.patch('me_assets', { id: 'eq.' + ctx.asset.id }, { status: 'fehler', fehler: String(message || '').slice(0, 500) });
     } else if (task === 'decode' && ctx.template) {
@@ -165,6 +172,17 @@ export default async (req) => {
   }
   if (!project || project.uid !== uid) return jsonResp({ error: 'Kein Zugriff auf dieses Projekt.' }, 403);
 
+  // ---- Voraussetzungen je Aufgabe (SPEC §12.3/§12.4) ----
+  if (task === 'analyse' || task === 'verfeinern') {
+    const hatKurzprofil = project.kurzprofil && typeof project.kurzprofil === 'object' && Object.keys(project.kurzprofil).length;
+    if (!hatKurzprofil) return jsonResp({ error: 'Bitte zuerst das Kurzprofil erstellen.' }, 400);
+  }
+  if (task === 'avatar_vorschlag') {
+    const hatKurzprofil = project.kurzprofil && typeof project.kurzprofil === 'object' && Object.keys(project.kurzprofil).length;
+    const hatAnalyse = project.analyse && typeof project.analyse === 'object' && Object.keys(project.analyse).length;
+    if (!hatKurzprofil && !hatAnalyse) return jsonResp({ error: 'Bitte zuerst das Kurzprofil oder die Zielgruppenanalyse erstellen.' }, 400);
+  }
+
   let campaign = null;
   if (task === 'asset' || task === 'konsistenz') {
     if (!campaign_id) return jsonResp({ error: 'Keine Kampagne angegeben.' }, 400);
@@ -214,7 +232,7 @@ export default async (req) => {
       project_id, campaign_id: campaign_id || null, asset_id: asset_id || null,
       template_id: template ? template.id : null,
       status: 'wartet',
-      chars: 0, teil_fertig: 0, teile: istAnalyse ? 4 : 1,
+      chars: 0, teil_fertig: 0, teile: teileFor(task),
     });
   } catch (e) {
     return jsonResp({ error: 'Job konnte nicht angelegt werden.' }, 502);
@@ -225,8 +243,12 @@ export default async (req) => {
 
   // Status sofort sichtbar machen, damit ein Neuladen der Seite den Lauf erkennt.
   try {
-    if (istAnalyse) {
-      await supa.patch('me_projects', { id: 'eq.' + project_id }, { analyse_status: 'laeuft' });
+    if (task === 'kurzprofil') {
+      await supa.patch('me_projects', { id: 'eq.' + project_id }, { kurzprofil_status: 'laeuft' });
+    } else if (istAnalyse) {
+      // analyse_teile wird bei jedem neuen Lauf geleert (auch bei "verfeinern"), damit die
+      // Oberfläche keine Reste eines vorherigen Laufs anzeigt (SPEC §12.3).
+      await supa.patch('me_projects', { id: 'eq.' + project_id }, { analyse_status: 'laeuft', analyse_teile: {} });
     } else if (task === 'asset' && asset) {
       const patchBody = { status: 'laeuft', fehler: null };
       if (template) patchBody.template_id = template.id;

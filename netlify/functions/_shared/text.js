@@ -144,6 +144,22 @@ function collectStrings(node, path, out) {
   }
 }
 
+// Wie collectStrings, aber nur Pfade, auf die matchFn(path) zutrifft (path = Array aus
+// Schluesseln/Indizes von der Wurzel aus). Fuer die gestufte Kuerzung in truncateCtx (SPEC §12.5).
+function collectStringsFiltered(node, path, out, matchFn) {
+  if (typeof node === "string") {
+    if (matchFn(path)) out.push({ path, len: node.length });
+    return;
+  }
+  if (Array.isArray(node)) {
+    node.forEach((v, i) => collectStringsFiltered(v, path.concat(i), out, matchFn));
+    return;
+  }
+  if (node && typeof node === "object") {
+    for (const k of Object.keys(node)) collectStringsFiltered(node[k], path.concat(k), out, matchFn);
+  }
+}
+
 function getAt(root, path) {
   return path.reduce((n, k) => (n == null ? n : n[k]), root);
 }
@@ -155,8 +171,13 @@ function setAt(root, path, val) {
 }
 
 // Kuerzt lange Strings in "obj" so lange, bis JSON.stringify(obj) hoechstens maxChars
-// Zeichen hat. Die Schluessel aus priorityKeys werden zuerst gekuerzt (dort die laengsten
-// Strings zuerst), erst danach alle uebrigen Felder. Das Feld "brief" wird nie angetastet.
+// Zeichen hat. Prioritaet beim Kuerzen (SPEC §12.5): kurzprofil > brief > kern > inhalt,
+// das heisst: "inhalt"-Felder der Analyse werden zuerst gekuerzt/entfernt (kern bleibt dabei
+// unangetastet), danach die per priorityKeys uebergebenen Teilbaeume (Rueckwaertskompatibilitaet,
+// z. B. "analyse"/"bestehende_analyse", ohne kern/brief/kurzprofil), danach "kern"-Stichpunkte,
+// danach "brief", zuletzt (am staerksten geschuetzt) alles unter "kurzprofil". Ein Pfad zaehlt
+// zu "brief"/"kurzprofil"/"kern", wenn einer seiner Schluessel/Segmente genau so heisst
+// (egal auf welcher Ebene verschachtelt, z. B. zielgruppe.brief.notizen).
 function truncateCtx(obj, maxChars, priorityKeys) {
   const limit = maxChars || 60000;
   const priority = priorityKeys || [];
@@ -168,12 +189,30 @@ function truncateCtx(obj, maxChars, priorityKeys) {
   }
   if (stringSize(clone) <= limit) return clone;
 
-  function shrinkList(list) {
+  function within() {
+    return stringSize(clone) <= limit;
+  }
+  function hasSegment(path, name) {
+    return path.indexOf(name) !== -1;
+  }
+
+  // mode "drop": String komplett leeren (fuer inhalt-Felder, die per SPEC "gekuerzt/entfernt"
+  // werden duerfen, kern bleibt dabei erhalten). mode "shrink": wie bisher, lange Strings
+  // schrittweise abschneiden und mit "[gekuerzt]" markieren.
+  function pass(matchFn, mode) {
+    if (within()) return;
+    const list = [];
+    collectStringsFiltered(clone, [], list, matchFn);
     list.sort((a, b) => b.len - a.len);
     for (const item of list) {
-      if (stringSize(clone) <= limit) return;
+      if (within()) return;
       const cur = getAt(clone, item.path);
-      if (typeof cur !== "string" || cur.length < 200) continue;
+      if (typeof cur !== "string" || !cur.length) continue;
+      if (mode === "drop") {
+        setAt(clone, item.path, "");
+        continue;
+      }
+      if (cur.length < 200) continue;
       const over = stringSize(clone) - limit;
       const cut = Math.min(cur.length - 100, Math.ceil(over * 1.2) + 50);
       if (cut <= 0) continue;
@@ -182,20 +221,28 @@ function truncateCtx(obj, maxChars, priorityKeys) {
     }
   }
 
+  // 1) "inhalt"-Felder zuerst kuerzen/entfernen, "kern" bleibt unangetastet.
+  pass((path) => path[path.length - 1] === "inhalt", "drop");
+
+  // 2) Rueckwaertskompatibilitaet: explizit uebergebene priorityKeys-Teilbaeume, ohne
+  //    kern/brief/kurzprofil (die haben ihre eigene, spaetere Stufe unten).
   for (const key of priority) {
+    if (within()) break;
     if (!(key in clone)) continue;
-    const list = [];
-    collectStrings(clone[key], [key], list);
-    shrinkList(list);
-    if (stringSize(clone) <= limit) return clone;
+    pass((path) => path[0] === key && !hasSegment(path, "kern") && !hasSegment(path, "brief") && !hasSegment(path, "kurzprofil"), "shrink");
   }
 
-  const rest = [];
-  for (const key of Object.keys(clone)) {
-    if (priority.includes(key) || key === "brief") continue;
-    collectStrings(clone[key], [key], rest);
-  }
-  shrinkList(rest);
+  // 3) "kern"-Stichpunkte (nur wenn wirklich noetig).
+  pass((path) => hasSegment(path, "kern"), "shrink");
+
+  // 4) "brief" (produktbezogene Angaben der Zielgruppe).
+  pass((path) => hasSegment(path, "brief"), "shrink");
+
+  // 5) alles Uebrige, das noch nicht "kurzprofil" ist.
+  pass((path) => !hasSegment(path, "kurzprofil"), "shrink");
+
+  // 6) "kurzprofil" als letzte Instanz (am staerksten geschuetzt).
+  pass(() => true, "shrink");
 
   return clone;
 }
